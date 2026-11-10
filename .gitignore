@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.openai/*.local.*
+__pycache__/
+skils/
+TCHEKA_CONTEXT.md
+DESIGN.md

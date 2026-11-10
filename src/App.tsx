@@ -14,14 +14,17 @@ import {
   History,
   Info,
   LoaderCircle,
+  Moon,
   RotateCcw,
   Search,
+  Sun,
   TriangleAlert,
   Upload,
   X,
 } from "lucide-react";
 import { Modal } from "./components";
 import { receiptPresentation } from "./presentation";
+import { useTheme } from "./theme";
 import {
   DEMO_EXAMPLES,
   DISCLAIMER,
@@ -125,6 +128,7 @@ function PageHeading({
 }
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [store, setStore] = useState<Store>(startStore);
   const [route, setRoute] = useState(() =>
     validRoute(window.location.hash.slice(1)),
@@ -303,6 +307,14 @@ export default function App() {
           </a>
         </nav>
         <div className="nav-tools">
+          <button
+            className="nav-reset theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema escuro"}
+            title={theme === "dark" ? "Activar tema claro" : "Activar tema escuro"}
+          >
+            {theme === "dark" ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
+          </button>
           <button className="nav-reset" onClick={() => setShowReset(true)} aria-label="Limpar histórico" title="Limpar histórico">
             <RotateCcw aria-hidden="true" size={17} />
           </button>

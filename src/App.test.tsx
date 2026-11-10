@@ -376,3 +376,49 @@ test("editorial cleanup omits the environment label and preserves result limits 
     cleanup();
   }
 });
+
+test("theme switches accessibly, survives reload and remains independent of history reset", async () => {
+  let user = mount();
+  const before = localStorage.getItem(STORAGE_KEY);
+  await user.click(screen.getByRole("button", { name: "Activar tema escuro" }));
+  assert.equal(document.documentElement.dataset.theme, "dark");
+  assert.equal(localStorage.getItem("tcheka-theme"), "dark");
+  assert.equal(localStorage.getItem(STORAGE_KEY), before);
+  cleanup();
+  user = mount("/historico", true);
+  assert.equal(document.documentElement.dataset.theme, "dark");
+  await user.click(screen.getByRole("button", { name: "Limpar histórico" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Limpar histórico" }));
+  assert.equal(localStorage.getItem("tcheka-theme"), "dark");
+  await user.click(screen.getByRole("button", { name: "Activar tema claro" }));
+  assert.equal(document.documentElement.dataset.theme, "light");
+  assert.equal(localStorage.getItem("tcheka-theme"), "light");
+});
+
+test("theme follows system until explicitly chosen and still switches when storage is blocked", async () => {
+  const originalMatchMedia = window.matchMedia;
+  let systemDark = true;
+  const changes = new Set<() => void>();
+  window.matchMedia = (() => ({
+    get matches() { return systemDark; },
+    addEventListener: (_event: string, listener: () => void) => changes.add(listener),
+    removeEventListener: (_event: string, listener: () => void) => changes.delete(listener),
+  })) as unknown as typeof window.matchMedia;
+  const { act } = await import("@testing-library/react");
+  const originalSet = dom.window.Storage.prototype.setItem;
+  try {
+    const user = mount();
+    assert.equal(document.documentElement.dataset.theme, "dark");
+    act(() => { systemDark = false; changes.forEach((callback) => callback()); });
+    assert.equal(document.documentElement.dataset.theme, "light");
+    dom.window.Storage.prototype.setItem = () => { throw new Error("Storage blocked"); };
+    await user.click(screen.getByRole("button", { name: "Activar tema escuro" }));
+    assert.equal(document.documentElement.dataset.theme, "dark");
+    act(() => changes.forEach((callback) => callback()));
+    assert.equal(document.documentElement.dataset.theme, "dark", "manual choice overrides system");
+  } finally {
+    cleanup();
+    window.matchMedia = originalMatchMedia;
+    dom.window.Storage.prototype.setItem = originalSet;
+  }
+});

@@ -39,6 +39,8 @@ O processamento e os resultados são simulados e determinísticos. Não são exe
 
 ## Histórico e armazenamento
 
+O botão de lua/sol no cabeçalho alterna entre tema claro e escuro. Sem preferência guardada, segue o sistema; a escolha fica na chave `tcheka-theme` e não é removida ao limpar o histórico. Se o armazenamento estiver bloqueado, a alternância funciona durante a sessão. A impressão mantém fundo claro. O tema aplica-se antes do arranque da interface para evitar um clarão no modo escuro.
+
 O histórico contém apenas resultados dos exemplos, com ficheiro, data e hora da análise, banco/serviço fictício, valor e resultado documental. Permite pesquisa, filtro por resultado e consulta dos detalhes. As horas são apresentadas no fuso Africa/Luanda.
 
 Apenas resultados fictícios conhecidos são persistidos na chave `tcheka-analysis-v2` do localStorage. A migração remove exclusivamente a chave incompatível anterior `tcheka-demo-v1`; outras chaves do navegador são preservadas. A reposição da demonstração exige confirmação e limpa o histórico.
@@ -50,6 +52,8 @@ Apenas resultados fictícios conhecidos são persistidos na chave `tcheka-analys
 Os dados e as entidades dos exemplos são inteiramente fictícios. Não existem integrações ou parcerias bancárias. A repetição de uma referência, por si só, não classifica um documento como fraudulento. Para esclarecer a operação, obtenha o documento original e consulte o banco.
 
 ## Verificação
+
+Tema escuro: os 11 testes React passaram (incluindo alternância, recarregamento, independência do histórico, preferência do sistema e armazenamento bloqueado), assim como `npm run build`. A revisão visual em navegador permanece limitada pelo ambiente descrito abaixo.
 
 `npm test` verifica os exemplos e resultados determinísticos, duplicação separada, campos não identificados, validação de ficheiros, histórico, pesquisa/filtros, armazenamento e migração selectiva. Os testes React usam jsdom. `npm run build` verifica os tipos TypeScript e gera a versão estática em `dist/`.
 

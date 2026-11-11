@@ -251,6 +251,40 @@ test("real files can be selected, replaced, removed and dropped without a result
   assert.equal(screen.queryByText("cliente.pdf"), null);
 });
 
+test("camera capture replaces a demo, preserves selection on cancellation and allows retaking a photo", async () => {
+  const user = mount();
+  const camera = screen.getByLabelText("Fotografar comprovativo") as HTMLInputElement;
+  assert.equal(camera.getAttribute("capture"), "environment");
+  assert.equal(screen.getByLabelText("Seleccionar comprovativo").hasAttribute("capture"), false);
+  let captureRequested = false;
+  camera.addEventListener("click", () => { captureRequested = true; });
+  await user.click(screen.getByRole("button", { name: "Tirar foto" }));
+  assert.equal(captureRequested, true);
+
+  await user.click(screen.getByRole("button", { name: new RegExp(DEMO_EXAMPLES[0].title) }));
+  assert.equal((mainAnalyse() as HTMLButtonElement).disabled, false);
+  const photo = new File(["PRIVATE_PHOTO"], "comprovativo.jpg", { type: "image/jpeg" });
+  await user.upload(camera, photo);
+  assert.ok(screen.getByText(photo.name));
+  assert.ok(screen.getByText(UPLOAD_NOTICE));
+  assert.equal((mainAnalyse() as HTMLButtonElement).disabled, true);
+  fireEvent.change(camera, { target: { files: [] } });
+  assert.ok(screen.getByText(photo.name));
+
+  await user.click(screen.getByRole("button", { name: "Remover selecção" }));
+  assert.equal(screen.queryByText(photo.name), null);
+  await user.upload(camera, photo);
+  assert.ok(screen.getByText(photo.name));
+  assert.equal(saved().analyses.length, 0);
+  assert.doesNotMatch(localStorage.getItem(STORAGE_KEY)!, /PRIVATE_PHOTO|comprovativo.jpg/);
+
+  fireEvent.change(camera, {
+    target: { files: [new File([new Uint8Array(10 * 1024 * 1024 + 1)], "grande.jpg", { type: "image/jpeg" })] },
+  });
+  assert.match(screen.getByRole("alert").textContent!, /10 MB/);
+  assert.equal(screen.queryByText(photo.name), null);
+});
+
 test("invalid file formats, empty files, oversized files and multi-file drops show actionable errors", async () => {
   mount();
   const input = screen.getByLabelText("Seleccionar comprovativo");

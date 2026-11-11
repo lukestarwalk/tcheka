@@ -3,6 +3,7 @@ import type { DragEvent, ReactNode, RefObject } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   CheckCheck,
   CheckCircle2,
@@ -144,6 +145,7 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [storageWarning, setStorageWarning] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const processingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const closeReset = useCallback(() => setShowReset(false), []);
@@ -466,6 +468,19 @@ export default function App() {
               ) : (
                 <>
                   <input
+                    ref={cameraInput}
+                    type="file"
+                    hidden
+                    aria-label="Fotografar comprovativo"
+                    accept="image/jpeg,image/png"
+                    capture="environment"
+                    onChange={(e) => {
+                      const photo = e.target.files?.[0];
+                      e.target.value = "";
+                      chooseFile(photo);
+                    }}
+                  />
+                  <input
                     ref={fileInput}
                     id="receipt-file"
                     className="upload-input sr-only"
@@ -525,21 +540,31 @@ export default function App() {
                       </>
                     )}
                   </label>
-                  {selection && (
-                    <div className="file-actions">
-                      <button
-                        className="ghost"
-                        onClick={() => fileInput.current?.click()}
-                      >
-                        <Upload size={15} />
-                        Substituir ficheiro
-                      </button>
-                      <button className="ghost" onClick={removeSelection}>
-                        <X size={15} />
-                        Remover selecção
-                      </button>
-                    </div>
-                  )}
+                  <div className="file-actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => cameraInput.current?.click()}
+                    >
+                      <Camera size={17} aria-hidden="true" />
+                      Tirar foto
+                    </button>
+                    {selection && (
+                      <>
+                        <button
+                          className="ghost"
+                          onClick={() => fileInput.current?.click()}
+                        >
+                          <Upload size={15} />
+                          Substituir ficheiro
+                        </button>
+                        <button className="ghost" onClick={removeSelection}>
+                          <X size={15} />
+                          Remover selecção
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {fileError && (
                     <div className="form-error" role="alert">
                       <TriangleAlert size={17} />

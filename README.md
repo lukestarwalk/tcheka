@@ -26,6 +26,8 @@ React + TypeScript + Vite, CSS normal e lucide-react. Sem backend ou serviços p
 
 A página inicial permite seleccionar ou arrastar um PDF, JPG ou PNG até 10 MB. Mostra nome, formato e tamanho; permite substituir ou remover a selecção. O formato, a compatibilidade entre extensão e tipo e o tamanho são validados.
 
+O botão «Tirar foto» permite fotografar o comprovativo com a câmara traseira nos telemóveis cujo navegador suporta captura nativa. Nos restantes navegadores, abre o selector de imagens. A foto segue a mesma validação (JPG ou PNG, até 10 MB) e pode ser substituída ou removida. Cancelar a captura mantém a selecção anterior.
+
 Esta versão não analisa automaticamente ficheiros reais. A selecção de um ficheiro apresenta o aviso de indisponibilidade, sem extrair dados, atribuir resultado ou criar uma análise no histórico. O conteúdo não é lido, enviado nem guardado.
 
 Para experimentar o fluxo, escolha um dos quatro exemplos fictícios e prima «Analisar comprovativo»:

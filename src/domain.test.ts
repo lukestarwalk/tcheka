@@ -3,13 +3,11 @@ import assert from "node:assert/strict";
 import {
   initialStore,
   analyseExample,
+  acceptFile,
   DEMO_EXAMPLES,
   RESULT_LABELS,
   RESULT_MESSAGES,
   DISCLAIMER,
-  UPLOAD_NOTICE,
-  MAX_FILE_SIZE,
-  validateFile,
   formatMoney,
   formatDate,
   formatDateTime,
@@ -68,6 +66,7 @@ test("simulated visual alteration shows concrete reasons and never a fraud statu
     "clear",
     "inconclusive",
     "irregular",
+    "unverified",
   ]);
 });
 
@@ -136,47 +135,6 @@ test("reanalysis preserves the example outcome and does not mutate shared exampl
       "test mutation",
     ),
     false,
-  );
-});
-
-test("file validation accepts only compatible supported extensions and MIME types", () => {
-  for (const [name, type] of [
-    ["a.pdf", "application/pdf"],
-    ["a.JPG", "image/jpeg"],
-    ["a.jpeg", "image/jpeg"],
-    ["a.png", "image/png"],
-  ]) {
-    assert.equal(validateFile({ name, type, size: 1024 }), null);
-  }
-  for (const [name, type] of [
-    ["a.exe", "application/pdf"],
-    ["a.pdf", "image/png"],
-    ["a.png", "application/pdf"],
-    ["a.jpg", ""],
-    ["a.pdf.exe", "application/pdf"],
-  ]) {
-    assert.match(validateFile({ name, type, size: 1024 })!, /extensão.*tipo/);
-  }
-});
-
-test("file validation enforces nonempty files and the 10 MiB limit without producing a result", () => {
-  const file = {
-    name: "ficheiro-real.pdf",
-    type: "application/pdf",
-    size: MAX_FILE_SIZE,
-  };
-  assert.equal(validateFile(file), null);
-  assert.match(validateFile({ ...file, size: MAX_FILE_SIZE + 1 })!, /10 MB/);
-  assert.match(validateFile({ ...file, size: 0 })!, /vazio/);
-  assert.match(validateFile({ ...file, size: Infinity })!, /inválido/);
-  assert.deepEqual(initialStore(), { version: 2, analyses: [] });
-  assert.match(
-    UPLOAD_NOTICE,
-    /Não é possível analisar este ficheiro/,
-  );
-  assert.throws(
-    () => analyseExample(initialStore(), "upload" as DemoKey, AT),
-    /exemplo de demonstração válido/,
   );
 });
 
@@ -334,4 +292,15 @@ test("invalid calendar timestamps cannot create or restore completed analysis re
     }),
     initialStore(),
   );
+});
+
+
+test("accepted files retain metadata but never trust stored analysis claims or content", () => {
+  const { store, record } = acceptFile(initialStore(), { name: "demonstracao-real.bin", type: "", size: 0 }, "2026-11-24T12:00:00Z");
+  assert.equal(record.fileName, "demonstracao-real.bin");
+  assert.equal(record.result, "unverified");
+  assert.equal(record.amount, null);
+  assert.deepEqual(sanitizeStore(store), store);
+  const forged = { ...record, result: "clear", amount: 2000000, reference: "inventada", duplicateOf: record.id, content: "private bytes" };
+  assert.deepEqual(sanitizeStore({ version: 2, analyses: [forged] }).analyses, [record]);
 });

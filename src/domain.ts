@@ -1,12 +1,12 @@
 /** Analysis-only demonstration model. Monetary values use integer cêntimos. */
-export type ResultState = "clear" | "irregular" | "inconclusive";
-export type DemoKey = "consistent" | "altered" | "illegible" | "repeated";
+export type ResultState = "clear" | "irregular" | "inconclusive" | "unverified";
+export type DemoKey = "consistent" | "altered" | "illegible" | "repeated" | "uploaded";
 export interface DemoExample {
   key: DemoKey;
   title: string;
   description: string;
   fileName: string;
-  format: "PDF" | "JPG" | "PNG";
+  format: string;
   size: number;
   issuer: string | null;
   amount: number | null;
@@ -34,14 +34,15 @@ export interface SelectedFileMetadata {
 export const DISCLAIMER =
   "A análise do comprovativo não confirma que o dinheiro entrou na conta do beneficiário.";
 export const UPLOAD_NOTICE =
-  "Não é possível analisar este ficheiro. Escolha um dos exemplos abaixo. O ficheiro não foi enviado nem guardado.";
-export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  "O ficheiro será aceite sem análise do conteúdo. Não será enviado para um servidor.";
 export const RESULT_LABELS: Record<ResultState, string> = {
+  unverified: "Ficheiro aceite — não analisado",
   clear: "Sem divergências detectadas",
   irregular: "Indícios de irregularidade",
   inconclusive: "Análise inconclusiva",
 };
 export const RESULT_MESSAGES: Record<ResultState, string> = {
+  unverified: "O ficheiro foi aceite. O conteúdo não foi verificado e não foram extraídos dados do comprovativo.",
   clear:
     "Os campos verificados não apresentam inconsistências.",
   irregular: "Foram identificados elementos que exigem verificação adicional.",
@@ -122,6 +123,32 @@ export const DEMO_EXAMPLES: DemoExample[] = [
 export function initialStore(): Store {
   return { version: 2, analyses: [] };
 }
+/** Accept metadata only; never read the document or infer a financial result. */
+export function acceptFile(store: Store, file: SelectedFileMetadata, at = new Date().toISOString()): { store: Store; record: AnalysisRecord } {
+  if (!validTimestamp(at)) throw new Error("A data e hora do registo são inválidas.");
+  const record: AnalysisRecord = {
+    key: "uploaded",
+    id: nextId(store.analyses),
+    analysedAt: at,
+    title: "Ficheiro aceite",
+    description: RESULT_MESSAGES.unverified,
+    fileName: file.name,
+    format: fileFormat(file.name),
+    size: file.size,
+    issuer: null,
+    amount: null,
+    date: null,
+    beneficiary: null,
+    reference: null,
+    result: "unverified",
+    reasons: [],
+  };
+  return { store: { version: 2, analyses: [...store.analyses, record] }, record };
+}
+export function fileFormat(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : "Ficheiro";
+}
 function copyExample(example: DemoExample): DemoExample {
   return { ...example, reasons: [...example.reasons] };
 }
@@ -178,28 +205,6 @@ export function analyseExample(
   };
   analyses.push(record);
   return { store: { version: 2, analyses }, record };
-}
-export function validateFile(file: SelectedFileMetadata): string | null {
-  const extension = file.name.trim().split(".").pop()?.toLowerCase();
-  const mime = file.type.trim().toLowerCase();
-  const compatible: Record<string, string[]> = {
-    pdf: ["application/pdf"],
-    jpg: ["image/jpeg", "image/jpg"],
-    jpeg: ["image/jpeg", "image/jpg"],
-    png: ["image/png"],
-  };
-  if (
-    !extension ||
-    !compatible[extension] ||
-    !compatible[extension].includes(mime)
-  ) {
-    return "Seleccione um ficheiro PDF, JPG ou PNG. A extensão e o tipo do ficheiro devem ser compatíveis.";
-  }
-  if (!Number.isSafeInteger(file.size) || file.size <= 0)
-    return "O ficheiro está vazio ou tem um tamanho inválido. Seleccione outro ficheiro.";
-  if (file.size > MAX_FILE_SIZE)
-    return "O ficheiro não pode exceder 10 MB. Seleccione um ficheiro mais pequeno.";
-  return null;
 }
 export function formatMoney(amount: number | null | undefined): string {
   if (amount === null || amount === undefined || !Number.isSafeInteger(amount))

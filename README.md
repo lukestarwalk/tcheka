@@ -20,32 +20,25 @@ npm run build
 
 React + TypeScript + Vite, CSS normal e lucide-react. Sem backend ou serviços pagos.
 
-## Fluxo
+## Fluxo actual
 
-**Carregar comprovativo → Analisar → Consultar resultado**
+**Seleccionar comprovativo → Analisar comprovativo → Consultar registo**
 
-A página inicial permite seleccionar ou arrastar um PDF, JPG ou PNG até 10 MB. Mostra nome, formato e tamanho; permite substituir ou remover a selecção. O formato, a compatibilidade entre extensão e tipo e o tamanho são validados.
+A página inicial aceita qualquer ficheiro, independentemente da extensão, tipo, tamanho ou conteúdo, um de cada vez. Permite seleccionar, arrastar, substituir e remover o ficheiro. «Tirar foto» solicita a câmara nos navegadores que suportam captura nativa; nos restantes abre o selector de imagens.
 
-O botão «Tirar foto» permite fotografar o comprovativo com a câmara traseira nos telemóveis cujo navegador suporta captura nativa. Nos restantes navegadores, abre o selector de imagens. A foto segue a mesma validação (JPG ou PNG, até 10 MB) e pode ser substituída ou removida. Cancelar a captura mantém a selecção anterior.
+Os quatro cartões de exemplos foram removidos. Depois de seleccionar um ficheiro, «Analisar comprovativo» avança para **Ficheiro aceite — não analisado**. Esta versão não lê o conteúdo, não extrai campos, não compara referências e não consulta bancos. A breve transição prepara apenas o registo.
 
-Esta versão não analisa automaticamente ficheiros reais. A selecção de um ficheiro apresenta o aviso de indisponibilidade, sem extrair dados, atribuir resultado ou criar uma análise no histórico. O conteúdo não é lido, enviado nem guardado.
+O resultado mostra nome, formato, tamanho e a indicação «Verificação do conteúdo: Não realizada». O ficheiro não é enviado para um servidor nem guardado; apenas os metadados e a hora ficam no histórico local. A aceitação do ficheiro não confirma autenticidade nem recebimento de dinheiro.
 
-Para experimentar o fluxo, escolha um dos quatro exemplos fictícios e prima «Analisar comprovativo»:
-
-1. Documento sem inconsistências detectadas: dados legíveis e coerentes, resultado sem divergências.
-2. Documento com indícios de alteração: diferenças de tipografia, alinhamento e fundo previamente definidas.
-3. Imagem ilegível: análise inconclusiva e campos «Não identificado».
-4. Referência anteriormente analisada: resultado documental separado do alerta de possível duplicação, com acesso ao registo anterior. Se o histórico estiver vazio, o cenário inclui um registo de referência explicitamente fictício.
-
-O processamento e os resultados são simulados e determinísticos. Não são executados OCR, verificação criptográfica ou consulta bancária.
+Não são necessários conta, credenciais ou ficheiros de exemplo. Para repetir a demonstração, use «Analisar outro comprovativo» e seleccione novamente o ficheiro. Repetir o nome não gera um alerta de duplicação.
 
 ## Histórico e armazenamento
 
 O botão de lua/sol no cabeçalho alterna entre tema claro e escuro. Sem preferência guardada, segue o sistema; a escolha fica na chave `tcheka-theme` e não é removida ao limpar o histórico. Se o armazenamento estiver bloqueado, a alternância funciona durante a sessão. A impressão mantém fundo claro. O tema aplica-se antes do arranque da interface para evitar um clarão no modo escuro.
 
-O histórico contém apenas resultados dos exemplos, com ficheiro, data e hora da análise, banco/serviço fictício, valor e resultado documental. Permite pesquisa, filtro por resultado e consulta dos detalhes. As horas são apresentadas no fuso Africa/Luanda.
+O histórico inclui os registos dos ficheiros aceites, com pesquisa pelo nome e filtro «Não analisados». As horas são apresentadas no fuso Africa/Luanda. Os antigos registos fictícios continuam legíveis por compatibilidade; os seus exemplos já não podem ser seleccionados na interface.
 
-Apenas resultados fictícios conhecidos são persistidos na chave `tcheka-analysis-v2` do localStorage. A migração remove exclusivamente a chave incompatível anterior `tcheka-demo-v1`; outras chaves do navegador são preservadas. A reposição da demonstração exige confirmação e limpa o histórico.
+Os metadados são persistidos na chave `tcheka-analysis-v2` do localStorage. O conteúdo dos ficheiros não é persistido. A leitura do armazenamento reconstrói os novos registos como não analisados, descartando resultados ou dados financeiros adicionados externamente. A migração remove exclusivamente a chave incompatível anterior `tcheka-demo-v1`. A limpeza do histórico exige confirmação.
 
 ## Limite essencial
 
@@ -54,6 +47,8 @@ Apenas resultados fictícios conhecidos são persistidos na chave `tcheka-analys
 Os dados e as entidades dos exemplos são inteiramente fictícios. Não existem integrações ou parcerias bancárias. A repetição de uma referência, por si só, não classifica um documento como fraudulento. Para esclarecer a operação, obtenha o documento original e consulte o banco.
 
 ## Verificação
+
+As notas abaixo documentam verificações de versões anteriores; o fluxo actual é o de aceitação de ficheiros descrito acima.
 
 Tema escuro: os 11 testes React passaram (incluindo alternância, recarregamento, independência do histórico, preferência do sistema e armazenamento bloqueado), assim como `npm run build`. A revisão visual em navegador permanece limitada pelo ambiente descrito abaixo.
 
@@ -67,7 +62,7 @@ Verificação desta renovação: `npm run build` passou; `node --import tsx --te
 
 Por decisão posterior de Luke, a interface não mostra a label “Ambiente de demonstração”. Os resultados continuam simulados; a impressão identifica-os como “Resultado simulado”. Não existem exportações ou partilhas de resultados implementadas. A página “Sobre” contém orientação de utilização; o enquadramento académico e técnico permanece nesta documentação.
 
-O aviso de que uma análise não confirma o recebimento aparece uma vez junto ao resultado. A selecção de ficheiros reais continua sem produzir análises, com a restrição apresentada no local. Os controlos de histórico, filtros, exemplos e limpeza com confirmação mantêm o comportamento anterior.
+O aviso de que uma análise não confirma o recebimento aparece uma vez junto ao resultado. A selecção de ficheiros reais cria apenas registos não analisados, conforme o fluxo actual descrito acima. Os controlos de histórico, filtros e limpeza com confirmação permanecem disponíveis.
 
 `src/presentation.ts` adapta exclusivamente textos apresentados. Os exemplos canónicos e a validação do armazenamento mantêm-se intactos para não apagar análises previamente guardadas. O link técnico para descarregar código foi retirado da interface.
 

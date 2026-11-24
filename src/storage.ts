@@ -1,4 +1,4 @@
-import { DEMO_EXAMPLES, initialStore } from "./domain";
+import { DEMO_EXAMPLES, acceptFile, initialStore } from "./domain";
 import type { AnalysisRecord, DemoExample, Store } from "./domain";
 
 export const STORAGE_KEY = "tcheka-analysis-v2";
@@ -25,13 +25,24 @@ function sameExample(
       : value[key] === example[key as keyof DemoExample],
   );
 }
-/** Rebuild only known fictional examples. Unknown records and all extra properties are discarded. */
+/** Rebuild accepted-file metadata and legacy examples; discard arbitrary result fields. */
 export function sanitizeStore(value: unknown): Store {
   if (!object(value) || value.version !== 2 || !Array.isArray(value.analyses))
     return initialStore();
   const analyses: AnalysisRecord[] = [];
   for (const candidate of value.analyses) {
     if (!object(candidate)) continue;
+    if (candidate.key === "uploaded") {
+      if (typeof candidate.fileName !== "string" || typeof candidate.size !== "number" ||
+          !Number.isSafeInteger(candidate.size) || candidate.size < 0 ||
+          typeof candidate.id !== "string" || !/^analysis-\d{3,}$/.test(candidate.id) ||
+          analyses.some((record) => record.id === candidate.id) || typeof candidate.analysedAt !== "string") continue;
+      try {
+        const { record } = acceptFile(initialStore(), { name: candidate.fileName, size: candidate.size, type: "" }, candidate.analysedAt);
+        analyses.push({ ...record, id: candidate.id });
+      } catch { /* Invalid stored metadata. */ }
+      continue;
+    }
     const example = DEMO_EXAMPLES.find((item) => item.key === candidate.key);
     if (!example || !sameExample(candidate, example)) continue;
     if (

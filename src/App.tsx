@@ -27,19 +27,18 @@ import { Modal } from "./components";
 import { receiptPresentation } from "./presentation";
 import { useTheme } from "./theme";
 import {
-  DEMO_EXAMPLES,
   DISCLAIMER,
   RESULT_LABELS,
   RESULT_MESSAGES,
   UPLOAD_NOTICE,
-  analyseExample,
+  acceptFile,
+  fileFormat,
   formatDate,
   formatDateTime,
   formatMoney,
   initialStore,
-  validateFile,
 } from "./domain";
-import type { AnalysisRecord, DemoKey, ResultState, Store } from "./domain";
+import type { AnalysisRecord, ResultState, Store } from "./domain";
 import { loadStore, persistStore } from "./storage";
 
 const resultLink = (id: string) => `/resultado/${encodeURIComponent(id)}`;
@@ -65,7 +64,7 @@ function startStore(): Store {
 }
 function ResultBadge({ result }: { result: ResultState }) {
   return (
-    <span className={`result-badge badge-${result}`}>
+    <span className={`result-badge badge-${result === "unverified" ? "inconclusive" : result}`}>
       {result === "clear" ? (
         <CheckCircle2 size={13} />
       ) : result === "irregular" ? (
@@ -134,7 +133,6 @@ export default function App() {
   const [route, setRoute] = useState(() =>
     validRoute(window.location.hash.slice(1)),
   );
-  const [selectedDemo, setSelectedDemo] = useState<DemoKey | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -189,16 +187,13 @@ export default function App() {
     const timer = setTimeout(() => setToast(""), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
-  const demo = DEMO_EXAMPLES.find((d) => d.key === selectedDemo);
   const selection = selectedFile
     ? {
         name: selectedFile.name,
-        format: selectedFile.name.split(".").pop()?.toUpperCase() || "",
+        format: fileFormat(selectedFile.name),
         size: selectedFile.size,
       }
-    : demo
-      ? { name: receiptPresentation(demo).fileName, format: demo.format, size: demo.size }
-      : null;
+    : null;
   const isHistory = route === "/historico";
   const isAbout = route === "/sobre";
   const selectedRecord = route.startsWith("/resultado/")
@@ -219,24 +214,14 @@ export default function App() {
         .includes(query.toLocaleLowerCase()),
   );
   function removeSelection() {
-    setSelectedDemo(null);
     setSelectedFile(null);
     setFileError("");
     if (fileInput.current) fileInput.current.value = "";
   }
   function chooseFile(file: File | undefined) {
     if (!file) return;
-    const error = validateFile(file);
-    setSelectedDemo(null);
-    setSelectedFile(error ? null : file);
-    setFileError(error ?? "");
-    if (error && fileInput.current) fileInput.current.value = "";
-  }
-  function chooseDemo(key: DemoKey) {
-    setSelectedDemo(key);
-    setSelectedFile(null);
+    setSelectedFile(file);
     setFileError("");
-    if (fileInput.current) fileInput.current.value = "";
   }
   function drop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
@@ -250,12 +235,12 @@ export default function App() {
     chooseFile(e.dataTransfer.files[0]);
   }
   function analyse() {
-    if (processing || !selectedDemo || selectedFile) return;
+    if (processing || !selectedFile) return;
     setProcessing(true);
     setFileError("");
     processingTimer.current = setTimeout(() => {
       processingTimer.current = null;
-      const next = analyseExample(store, selectedDemo);
+      const next = acceptFile(store, selectedFile);
       setStore(next.store);
       setProcessing(false);
       routeTo(resultLink(next.record.id));
@@ -415,7 +400,7 @@ export default function App() {
       <>
         <PageHeading
           headingRef={heading}
-          subtitle="Escolha um exemplo para analisar os dados do comprovativo."
+          subtitle="Seleccione o comprovativo no seu dispositivo."
         >
           Analisar comprovativo
         </PageHeading>
@@ -439,7 +424,7 @@ export default function App() {
               <div className="panel-header">
                 <div>
                   <h2 id="upload-title">Adicionar comprovativo</h2>
-                  <p className="muted small">PDF, JPG ou PNG · até 10 MB</p>
+                  <p className="muted small">Qualquer formato · um ficheiro de cada vez</p>
                 </div>
                 <span className="subtle-icon">
                   <Upload size={21} />
@@ -454,7 +439,7 @@ export default function App() {
                   <span className="processing-symbol">
                     <LoaderCircle className="spinner" size={34} />
                   </span>
-                  <h3>A analisar comprovativo…</h3>
+                  <h3>A preparar o registo…</h3>
                   <div className="processing-steps">
                     <span className="processing-item">
                       <CheckCircle2 size={15} />
@@ -472,7 +457,7 @@ export default function App() {
                     type="file"
                     hidden
                     aria-label="Fotografar comprovativo"
-                    accept="image/jpeg,image/png"
+                    accept="image/*"
                     capture="environment"
                     onChange={(e) => {
                       const photo = e.target.files?.[0];
@@ -486,7 +471,6 @@ export default function App() {
                     className="upload-input sr-only"
                     type="file"
                     aria-label="Seleccionar comprovativo"
-                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                     onChange={(e) => chooseFile(e.target.files?.[0])}
                   />
                   <label
@@ -536,7 +520,7 @@ export default function App() {
                           </span>{" "}
                           no seu dispositivo
                         </span>
-                        <small>A análise está disponível apenas para os exemplos abaixo.</small>
+                        <small>Seleccione um ficheiro ou tire uma foto.</small>
                       </>
                     )}
                   </label>
@@ -582,7 +566,7 @@ export default function App() {
               <div className="upload-footer">
                 <button
                   className="primary"
-                  disabled={!selectedDemo || !!selectedFile || processing}
+                  disabled={!selectedFile || processing}
                   onClick={analyse}
                 >
                   {processing ? (
@@ -592,49 +576,6 @@ export default function App() {
                   )}
                   Analisar comprovativo <ArrowRight size={15} />
                 </button>
-              </div>
-            </section>
-            <section className="demo-section" aria-labelledby="demo-title">
-              <div className="demo-section-heading">
-                <div>
-                  <h2 id="demo-title">Escolher um exemplo</h2>
-
-                </div>
-              </div>
-              <div className="demo-grid">
-                {DEMO_EXAMPLES.map(receiptPresentation).map((example, index) => (
-                  <button
-                    key={example.key}
-                    className={`demo-example ${selectedDemo === example.key ? "selected" : ""}`}
-                    aria-pressed={selectedDemo === example.key}
-                    disabled={processing}
-                    onClick={() => chooseDemo(example.key)}
-                  >
-                    <span
-                      className={`demo-example-icon example-${example.key}`}
-                    >
-                      {index === 0 ? (
-                        <FileCheck2 size={22} />
-                      ) : index === 1 ? (
-                        <TriangleAlert size={22} />
-                      ) : index === 2 ? (
-                        <FileSearch size={22} />
-                      ) : (
-                        <History size={22} />
-                      )}
-                    </span>
-                    <span className="demo-example-text">
-                      <strong>{example.title}</strong>
-                      <small>{example.description}</small>
-                      <span>
-                        {example.format} · {fileSize(example.size)}
-                      </span>
-                    </span>
-                    <span className="demo-radio">
-                      {selectedDemo === example.key && <Check size={12} />}
-                    </span>
-                  </button>
-                ))}
               </div>
             </section>
           </div>
@@ -695,7 +636,7 @@ export default function App() {
         <div className="result-layout">
           <div className="result-main">
             <section
-              className={`result-banner result-${record.result}`}
+              className={`result-banner result-${record.result === "unverified" ? "inconclusive" : record.result}`}
               aria-labelledby="result-title"
             >
               <span className="result-icon">
@@ -743,6 +684,17 @@ export default function App() {
                 </div>
               </section>
             )}
+            {record.key === "uploaded" ? (
+              <section className="panel details-panel" id="analysis-details">
+                <div className="panel-header"><h2>Detalhes do registo</h2></div>
+                <dl className="document-data">
+                  <DataItem label="Ficheiro">{record.fileName}</DataItem>
+                  <DataItem label="Formato">{record.format}</DataItem>
+                  <DataItem label="Tamanho">{fileSize(record.size)}</DataItem>
+                  <DataItem label="Verificação do conteúdo">Não realizada</DataItem>
+                </dl>
+              </section>
+            ) : (<>
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -834,6 +786,7 @@ export default function App() {
                 </li>
               </ul>
             </section>
+            </>)}
             <div className="result-actions">
               <button className="primary" onClick={analyseAnother}>
                 <Upload size={17} />
@@ -864,7 +817,7 @@ export default function App() {
               </div>
               <dl>
                 <div className="summary-line">
-                  <dt>Data e hora da análise</dt>
+                  <dt>{record.key === "uploaded" ? "Data e hora do registo" : "Data e hora da análise"}</dt>
                   <dd>{formatDateTime(record.analysedAt)}</dd>
                 </div>
               </dl>
@@ -885,7 +838,7 @@ export default function App() {
                   )?.focus({ preventScroll: true });
                 }}
               >
-                Ver detalhes da análise <ArrowRight size={15} />
+                {record.key === "uploaded" ? "Ver detalhes do registo" : "Ver detalhes da análise"} <ArrowRight size={15} />
               </button>
             </section>
           </aside>
@@ -939,7 +892,7 @@ export default function App() {
               )}
             </label>
             <div className="filter-tabs" aria-label="Filtrar por resultado">
-              {(["all", "clear", "irregular", "inconclusive"] as const).map(
+              {(["all", "unverified", "clear", "irregular", "inconclusive"] as const).map(
                 (value) => (
                   <button
                     key={value}
@@ -949,6 +902,8 @@ export default function App() {
                   >
                     {value === "all"
                       ? "Todos"
+                      : value === "unverified"
+                        ? "Não analisados"
                       : value === "clear"
                         ? "Sem divergências"
                         : value === "irregular"
@@ -1011,7 +966,7 @@ export default function App() {
               text={
                 store.analyses.length
                   ? "Experimente outra pesquisa ou outro resultado."
-                  : "Escolha um exemplo para fazer a primeira análise."
+                  : "Seleccione um comprovativo para começar."
               }
             >
               {store.analyses.length ? (
@@ -1055,8 +1010,8 @@ export default function App() {
           <section className="panel">
             <div className="panel-header"><h2>Como analisar</h2></div>
             <div className="about-copy">
-              <p>Escolha um exemplo e seleccione «Analisar comprovativo». Consulte o resultado e os dados apresentados.</p>
-              <p>Use o histórico para encontrar uma análise por ficheiro, banco ou referência.</p>
+              <p>Seleccione um ficheiro ou tire uma foto e seleccione «Analisar comprovativo». O ficheiro é aceite sem verificação do conteúdo.</p>
+              <p>Use o histórico para encontrar o registo pelo nome do ficheiro. Apenas o nome, formato, tamanho e momento do registo ficam guardados neste navegador.</p>
             </div>
           </section>
           <section className="panel">

@@ -16,6 +16,7 @@ const labels: Record<string, string> = {
 };
 
 export function receiptPresentation<T extends DemoExample>(record: T): T {
+  if (record.key === "uploaded") return record;
   return {
     ...record,
     fileName: record.fileName.replace(/^demonstracao-/, ""),

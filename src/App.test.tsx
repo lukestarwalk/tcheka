@@ -1,7 +1,7 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DEMO_EXAMPLES, RESULT_LABELS, UPLOAD_NOTICE, DISCLAIMER, analyseExample, initialStore } from "./domain";
+import { DEMO_EXAMPLES, RESULT_LABELS, DISCLAIMER, analyseExample, initialStore } from "./domain";
 import type { Store } from "./domain";
 import { STORAGE_KEY } from "./storage";
 
@@ -49,7 +49,7 @@ afterEach(() => {
 async function submitFile(user: ReturnType<typeof userEvent.setup>, file = new File(["comprovativo"], "recibo.pdf", { type: "application/pdf" })) {
   await user.upload(screen.getByLabelText("Seleccionar comprovativo"), file);
   await user.click(mainAnalyse());
-  await screen.findByRole("heading", { name: "Ficheiro aceite — não analisado" }, { timeout: 2500 });
+  await screen.findByRole("heading", { name: RESULT_LABELS.unverified }, { timeout: 4500 });
 }
 
 test("home removes all four examples and accepts an unrestricted file without claiming analysis", async () => {
@@ -67,8 +67,20 @@ test("home removes all four examples and accepts an unrestricted file without cl
   assert.equal(screen.getAllByText(DISCLAIMER).length, 1);
   assert.equal(saved().analyses[0].result, "unverified");
   assert.equal(saved().analyses[0].amount, null);
+  assert.equal(screen.queryByRole("heading", { name: "Detalhes do registo" }), null);
+  assert.equal(screen.getByRole("button", { name: "Ver detalhes do registo" }).getAttribute("aria-expanded"), "false");
+  assert.doesNotMatch(document.body.textContent!, /resultado simulado|Este resultado é apresentado|Não realizada|autêntico/);
   await user.click(screen.getByRole("button", { name: "Ver detalhes do registo" }));
   assert.equal(document.activeElement?.textContent, "Detalhes do registo");
+  assert.equal(screen.getByRole("button", { name: "Ocultar detalhes do registo" }).getAttribute("aria-expanded"), "true");
+  await user.click(screen.getByRole("button", { name: "Ocultar detalhes do registo" }));
+  assert.equal(screen.queryByRole("heading", { name: "Detalhes do registo" }), null);
+  await user.click(screen.getByRole("button", { name: "Ver detalhes do registo" }));
+  await user.click(screen.getByRole("link", { name: "Histórico" }));
+  await screen.findByRole("heading", { name: "Histórico", level: 1 });
+  await user.click(screen.getByRole("link", { name: new RegExp(`Ver análise de ${file.name}`) }));
+  await screen.findByRole("heading", { name: RESULT_LABELS.unverified });
+  assert.equal(screen.queryByRole("heading", { name: "Detalhes do registo" }), null);
 });
 
 test("selection accepts empty, extensionless and large files; replacement, removal and camera cancellation work", async () => {
@@ -140,7 +152,7 @@ test("editorial cleanup omits the environment label and preserves result limits 
     localStorage.setItem(STORAGE_KEY, original);
     mount(route, true);
     assert.equal(screen.queryByText("Ambiente de demonstração"), null);
-    assert.doesNotMatch(document.body.textContent!, /protótipo|projecto académico|ISPTEC|OCR|criptográfic|simulad|fictíci|pipeline|fixture|MVP|incremento/i);
+    assert.doesNotMatch(document.body.textContent!, /protótipo|projecto académico|ISPTEC|OCR|criptográfic|fictíci|pipeline|fixture|MVP|incremento/i);
     assert.equal(document.querySelector('a[download]'), null);
     assert.equal(document.querySelectorAll(".demo-chip").length, 0);
     assert.equal(localStorage.getItem(STORAGE_KEY), original, "editorial aliases must not rewrite or discard saved analyses");

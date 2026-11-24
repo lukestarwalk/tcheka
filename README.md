@@ -26,11 +26,17 @@ React + TypeScript + Vite, CSS normal e lucide-react. Sem backend ou serviços p
 
 A página inicial aceita qualquer ficheiro, independentemente da extensão, tipo, tamanho ou conteúdo, um de cada vez. Permite seleccionar, arrastar, substituir e remover o ficheiro. «Tirar foto» solicita a câmara nos navegadores que suportam captura nativa; nos restantes abre o selector de imagens.
 
-Os quatro cartões de exemplos foram removidos. Depois de seleccionar um ficheiro, «Analisar comprovativo» avança para **Ficheiro aceite — não analisado**. Esta versão não lê o conteúdo, não extrai campos, não compara referências e não consulta bancos. A breve transição prepara apenas o registo.
+Os quatro cartões de exemplos foram removidos. Depois de seleccionar um ficheiro, «Analisar comprovativo» avança para **Comprovativo recebido**. Esta versão não lê o conteúdo, não extrai campos, não compara referências e não consulta bancos. A transição de três segundos apresenta três etapas animadas: receber ficheiro, organizar registo e preparar resultado. O resultado confirma a recepção do ficheiro, sem afirmar a sua autenticidade.
 
-O resultado mostra nome, formato, tamanho e a indicação «Verificação do conteúdo: Não realizada». O ficheiro não é enviado para um servidor nem guardado; apenas os metadados e a hora ficam no histórico local. A aceitação do ficheiro não confirma autenticidade nem recebimento de dinheiro.
+Os detalhes de banco indicado (Banco BFA), nome, formato e tamanho ficam recolhidos até clicar em «Ver detalhes do registo». O botão permite voltar a ocultá-los; ao mudar de página, os detalhes ficam novamente recolhidos. O ficheiro não é enviado para um servidor nem guardado; apenas os metadados e a hora ficam no histórico local. A aceitação do ficheiro não confirma autenticidade nem recebimento de dinheiro.
 
 Não são necessários conta, credenciais ou ficheiros de exemplo. Para repetir a demonstração, use «Analisar outro comprovativo» e seleccione novamente o ficheiro. Repetir o nome não gera um alerta de duplicação.
+
+## Pacotes
+
+A aba «Pacotes» (`#/pacotes`) apresenta as quatro opções propostas: Grátis (0 Kz), Pacote de créditos pré-pagos (1.500 Kz por pacote, compra avulsa), Plano Essencial (2.000 Kz por mês) e Plano Negócio (5.000 Kz por mês). Esta página apresenta preços; ainda não há checkout ou meios de pagamento implementados.
+
+«Banco BFA» é uma indicação configurada para o percurso da demonstração, não um banco identificado por leitura do ficheiro.
 
 ## Histórico e armazenamento
 

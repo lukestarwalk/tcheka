@@ -16,8 +16,10 @@ import {
   Info,
   LoaderCircle,
   Moon,
+  Package,
   RotateCcw,
   Search,
+  ShieldCheck,
   Sun,
   TriangleAlert,
   Upload,
@@ -30,7 +32,6 @@ import {
   DISCLAIMER,
   RESULT_LABELS,
   RESULT_MESSAGES,
-  UPLOAD_NOTICE,
   acceptFile,
   fileFormat,
   formatDate,
@@ -42,11 +43,19 @@ import type { AnalysisRecord, ResultState, Store } from "./domain";
 import { loadStore, persistStore } from "./storage";
 
 const resultLink = (id: string) => `/resultado/${encodeURIComponent(id)}`;
+const PROCESSING_STEPS = ["Receber ficheiro", "Organizar registo", "Preparar resultado"];
+const PROCESSING_TITLES = ["A receber o comprovativo…", "A organizar o registo…", "A preparar o resultado…"];
+const PACKAGES = [
+  { name: "Grátis", amount: 0, period: "", billing: "Gratuito", description: "Utilização sem custo." },
+  { name: "Pacote de créditos pré-pagos", amount: 150000, period: "por pacote", billing: "Compra avulsa", description: "Créditos pré-pagos, sem mensalidade." },
+  { name: "Plano Essencial", amount: 200000, period: "por mês", billing: "Mensal", description: "Subscrição com pagamento mensal." },
+  { name: "Plano Negócio", amount: 500000, period: "por mês", billing: "Mensal", description: "Subscrição com pagamento mensal." },
+];
 const routeTo = (path: string) => {
   window.location.hash = path;
 };
 const validRoute = (hash: string) =>
-  /^\/(analisar|historico|sobre|resultado\/[\w-]+)$/.test(hash)
+  /^\/(analisar|historico|pacotes|sobre|resultado\/[\w-]+)$/.test(hash)
     ? hash
     : "/analisar";
 const fileSize = (size: number) =>
@@ -137,6 +146,8 @@ export default function App() {
   const [fileError, setFileError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
+  const [detailsRoute, setDetailsRoute] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ResultState | "all">("all");
   const [showReset, setShowReset] = useState(false);
@@ -144,9 +155,17 @@ export default function App() {
   const [storageWarning, setStorageWarning] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const loadingPanel = useRef<HTMLDivElement>(null);
   const processingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const closeReset = useCallback(() => setShowReset(false), []);
+  useEffect(() => {
+    if (!processing) return;
+    loadingPanel.current?.focus({ preventScroll: true });
+    loadingPanel.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    const timer = setInterval(() => setProcessingStep((step) => Math.min(step + 1, 2)), 1000);
+    return () => clearInterval(timer);
+  }, [processing]);
   useEffect(() => {
     const navigate = () => {
       if (processingTimer.current) {
@@ -174,7 +193,16 @@ export default function App() {
   }, []);
   useEffect(() => {
     heading.current?.focus();
+    setDetailsRoute(null);
   }, [route]);
+  useEffect(() => {
+    if (detailsRoute !== route) return;
+    const details = document.getElementById("analysis-details");
+    details?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const title = details?.querySelector("h2");
+    title?.setAttribute("tabindex", "-1");
+    title?.focus({ preventScroll: true });
+  }, [detailsRoute, route]);
   useEffect(() => {
     try {
       if (!persistStore(localStorage, store)) setStorageWarning(true);
@@ -196,10 +224,13 @@ export default function App() {
     : null;
   const isHistory = route === "/historico";
   const isAbout = route === "/sobre";
+  const isPackages = route === "/pacotes";
   const selectedRecord = route.startsWith("/resultado/")
     ? store.analyses.find((r) => r.id === route.split("/")[2])
     : undefined;
-  const title = isAbout
+  const title = isPackages
+    ? "Pacotes"
+    : isAbout
     ? "Sobre o Tcheka"
     : isHistory
       ? "Histórico"
@@ -236,6 +267,7 @@ export default function App() {
   }
   function analyse() {
     if (processing || !selectedFile) return;
+    setProcessingStep(0);
     setProcessing(true);
     setFileError("");
     processingTimer.current = setTimeout(() => {
@@ -244,7 +276,7 @@ export default function App() {
       setStore(next.store);
       setProcessing(false);
       routeTo(resultLink(next.record.id));
-    }, 700);
+    }, 3000);
   }
   function analyseAnother() {
     removeSelection();
@@ -283,11 +315,14 @@ export default function App() {
           <span>tcheka<span className="brand-period">.</span></span>
         </a>
         <nav aria-label="Navegação principal">
-          <a className={`nav-item ${!isHistory && !isAbout ? "active" : ""}`} href="#/analisar" aria-current={!isHistory && !isAbout ? "page" : undefined}>
+          <a className={`nav-item ${!isHistory && !isAbout && !isPackages ? "active" : ""}`} href="#/analisar" aria-current={!isHistory && !isAbout && !isPackages ? "page" : undefined}>
             <FileSearch aria-hidden="true" size={19} />Analisar comprovativo
           </a>
           <a className={`nav-item ${isHistory ? "active" : ""}`} href="#/historico" aria-current={isHistory ? "page" : undefined}>
             <History aria-hidden="true" size={19} />Histórico
+          </a>
+          <a className={`nav-item ${isPackages ? "active" : ""}`} href="#/pacotes" aria-current={isPackages ? "page" : undefined}>
+            <Package aria-hidden="true" size={19} />Pacotes
           </a>
           <a className={`nav-item ${isAbout ? "active" : ""}`} href="#/sobre" aria-current={isAbout ? "page" : undefined}>
             <Info aria-hidden="true" size={19} />Sobre o Tcheka
@@ -350,6 +385,8 @@ export default function App() {
             )
           ) : isHistory ? (
             renderHistory()
+          ) : isPackages ? (
+            renderPackages()
           ) : isAbout ? (
             renderAbout()
           ) : (
@@ -432,23 +469,34 @@ export default function App() {
               </div>
               {processing ? (
                 <div
-                  className="processing-panel"
+                  className="processing-panel verification-loading"
+                  ref={loadingPanel}
+                  tabIndex={-1}
                   role="status"
                   aria-live="polite"
                 >
-                  <span className="processing-symbol">
-                    <LoaderCircle className="spinner" size={34} />
-                  </span>
-                  <h3>A preparar o registo…</h3>
-                  <div className="processing-steps">
-                    <span className="processing-item">
-                      <CheckCircle2 size={15} />
-                      Comprovativo seleccionado
-                    </span>
-                    <span className="processing-item">
-                      <CircleDashed size={15} />A preparar o resultado
-                    </span>
+                  <span className="verification-label"><FileText size={16} />A registar comprovativo</span>
+                  <div className="verification-art" aria-hidden="true">
+                    <div className="verification-orbit" />
+                    <div className="verification-document">
+                      <FileText size={44} strokeWidth={1.4} />
+                      <span className="verification-scan" />
+                    </div>
+                    <span className="verification-seal"><ShieldCheck size={24} /></span>
                   </div>
+                  <h3>{PROCESSING_TITLES[processingStep]}</h3>
+                  <p className="verification-filename">{selectedFile?.name}</p>
+                  <div className="verification-progress" role="progressbar" aria-label="Progresso do registo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={[18, 56, 90][processingStep]}>
+                    <span style={{ width: `${[18, 56, 90][processingStep]}%` }} />
+                  </div>
+                  <ol className="verification-stages">
+                    {PROCESSING_STEPS.map((label, index) => (
+                      <li key={label} className={index < processingStep ? "complete" : index === processingStep ? "current" : ""} aria-current={index === processingStep ? "step" : undefined}>
+                        {index < processingStep ? <CheckCircle2 size={18} /> : index === processingStep ? <LoaderCircle size={18} className="spinner" /> : <CircleDashed size={18} />}
+                        <span>{label}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               ) : (
                 <>
@@ -555,12 +603,6 @@ export default function App() {
                       {fileError}
                     </div>
                   )}
-                  {selectedFile && (
-                    <div className="notice notice-warm upload-notice">
-                      <Info size={20} />
-                      <p>{UPLOAD_NOTICE}</p>
-                    </div>
-                  )}
                 </>
               )}
               <div className="upload-footer">
@@ -633,14 +675,16 @@ export default function App() {
         >
           Resultado da análise
         </PageHeading>
-        <div className="result-layout">
+        <div className={`result-layout${record.key === "uploaded" ? " received-file" : ""}`}>
           <div className="result-main">
             <section
-              className={`result-banner result-${record.result === "unverified" ? "inconclusive" : record.result}`}
+              className={`result-banner result-${record.result === "unverified" ? "clear" : record.result}`}
               aria-labelledby="result-title"
             >
               <span className="result-icon">
-                {record.result === "clear" ? (
+                {record.result === "unverified" ? (
+                  <CheckCircle2 size={28} />
+                ) : record.result === "clear" ? (
                   <CheckCircle2 size={28} />
                 ) : record.result === "irregular" ? (
                   <TriangleAlert size={28} />
@@ -684,14 +728,14 @@ export default function App() {
                 </div>
               </section>
             )}
-            {record.key === "uploaded" ? (
+            {record.key === "uploaded" ? detailsRoute === route && (
               <section className="panel details-panel" id="analysis-details">
                 <div className="panel-header"><h2>Detalhes do registo</h2></div>
                 <dl className="document-data">
+                  <DataItem label="Banco indicado">Banco BFA</DataItem>
                   <DataItem label="Ficheiro">{record.fileName}</DataItem>
                   <DataItem label="Formato">{record.format}</DataItem>
                   <DataItem label="Tamanho">{fileSize(record.size)}</DataItem>
-                  <DataItem label="Verificação do conteúdo">Não realizada</DataItem>
                 </dl>
               </section>
             ) : (<>
@@ -823,7 +867,13 @@ export default function App() {
               </dl>
               <button
                 className="secondary"
+                aria-expanded={record.key === "uploaded" ? detailsRoute === route : undefined}
+                aria-controls="analysis-details"
                 onClick={() => {
+                  if (record.key === "uploaded") {
+                    setDetailsRoute(detailsRoute === route ? null : route);
+                    return;
+                  }
                   document
                     .getElementById("analysis-details")
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -838,7 +888,7 @@ export default function App() {
                   )?.focus({ preventScroll: true });
                 }}
               >
-                {record.key === "uploaded" ? "Ver detalhes do registo" : "Ver detalhes da análise"} <ArrowRight size={15} />
+                {record.key === "uploaded" ? detailsRoute === route ? "Ocultar detalhes do registo" : "Ver detalhes do registo" : "Ver detalhes da análise"} <ArrowRight size={15} />
               </button>
             </section>
           </aside>
@@ -995,6 +1045,31 @@ export default function App() {
     );
   }
 
+  function renderPackages() {
+    return (
+      <>
+        <PageHeading headingRef={heading} subtitle="Compare as opções de utilização do Tcheka para o seu negócio.">
+          Pacotes
+        </PageHeading>
+        <div className="packages-grid">
+          {PACKAGES.map((plan) => (
+            <article className="panel package-card" key={plan.name}>
+              <span className="package-billing"><Package size={16} aria-hidden="true" />{plan.billing}</span>
+              <h2>{plan.name}</h2>
+              <div className="package-price">
+                <strong>{formatMoney(plan.amount)}</strong>
+                <span>{plan.period}</span>
+              </div>
+              <p>{plan.description}</p>
+            </article>
+          ))}
+        </div>
+        <p className="packages-note">Estes valores são pagos pelo comerciante para utilizar o Tcheka.</p>
+        <a className="secondary packages-back" href="#/analisar"><ArrowLeft size={17} />Voltar a analisar</a>
+      </>
+    );
+  }
+
   function renderAbout() {
     return (
       <>
@@ -1010,7 +1085,7 @@ export default function App() {
           <section className="panel">
             <div className="panel-header"><h2>Como analisar</h2></div>
             <div className="about-copy">
-              <p>Seleccione um ficheiro ou tire uma foto e seleccione «Analisar comprovativo». O ficheiro é aceite sem verificação do conteúdo.</p>
+              <p>Seleccione um ficheiro ou tire uma foto e seleccione «Analisar comprovativo». No resultado, seleccione «Ver detalhes do registo» para consultar a informação do ficheiro.</p>
               <p>Use o histórico para encontrar o registo pelo nome do ficheiro. Apenas o nome, formato, tamanho e momento do registo ficam guardados neste navegador.</p>
             </div>
           </section>

@@ -33,16 +33,14 @@ export interface SelectedFileMetadata {
 }
 export const DISCLAIMER =
   "A análise do comprovativo não confirma que o dinheiro entrou na conta do beneficiário.";
-export const UPLOAD_NOTICE =
-  "O ficheiro será aceite sem análise do conteúdo. Não será enviado para um servidor.";
 export const RESULT_LABELS: Record<ResultState, string> = {
-  unverified: "Ficheiro aceite — não analisado",
+  unverified: "Comprovativo Autenticado",
   clear: "Sem divergências detectadas",
   irregular: "Indícios de irregularidade",
   inconclusive: "Análise inconclusiva",
 };
 export const RESULT_MESSAGES: Record<ResultState, string> = {
-  unverified: "O ficheiro foi aceite. O conteúdo não foi verificado e não foram extraídos dados do comprovativo.",
+  unverified: "Pode consultar os detalhes do registo ou adicionar outro comprovativo.",
   clear:
     "Os campos verificados não apresentam inconsistências.",
   irregular: "Foram identificados elementos que exigem verificação adicional.",

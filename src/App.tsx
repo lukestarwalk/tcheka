@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { Modal } from "./components";
+import PackagesPage from "./PackagesPage";
 import { receiptPresentation } from "./presentation";
 import { useTheme } from "./theme";
 import {
@@ -41,16 +42,11 @@ import {
 } from "./domain";
 import type { AnalysisRecord, ResultState, Store } from "./domain";
 import { loadStore, persistStore } from "./storage";
+import { PACKAGE_STORAGE_KEY, NoCreditsError, demoBalance, emptyPackages, readPackages, savePackageAction } from "./packages";
 
 const resultLink = (id: string) => `/resultado/${encodeURIComponent(id)}`;
 const PROCESSING_STEPS = ["Receber ficheiro", "Organizar registo", "Preparar resultado"];
 const PROCESSING_TITLES = ["A receber o comprovativo…", "A organizar o registo…", "A preparar o resultado…"];
-const PACKAGES = [
-  { name: "Grátis", amount: 0, period: "", billing: "Gratuito", description: "Utilização sem custo." },
-  { name: "Pacote de créditos pré-pagos", amount: 150000, period: "por pacote", billing: "Compra avulsa", description: "Créditos pré-pagos, sem mensalidade." },
-  { name: "Plano Essencial", amount: 200000, period: "por mês", billing: "Mensal", description: "Subscrição com pagamento mensal." },
-  { name: "Plano Negócio", amount: 500000, period: "por mês", billing: "Mensal", description: "Subscrição com pagamento mensal." },
-];
 const routeTo = (path: string) => {
   window.location.hash = path;
 };
@@ -139,6 +135,9 @@ function PageHeading({
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [store, setStore] = useState<Store>(startStore);
+  const [wallet, setWallet] = useState(() => {
+    try { return readPackages(localStorage); } catch { return emptyPackages(); }
+  });
   const [route, setRoute] = useState(() =>
     validRoute(window.location.hash.slice(1)),
   );
@@ -159,6 +158,17 @@ export default function App() {
   const processingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const closeReset = useCallback(() => setShowReset(false), []);
+  useEffect(() => {
+    const refresh = () => {
+      try { setWallet(readPackages(localStorage)); } catch { /* Show the last known balance. */ }
+    };
+    refresh();
+    const sync = (event: StorageEvent) => {
+      if (event.key === PACKAGE_STORAGE_KEY || event.key === null) refresh();
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [route]);
   useEffect(() => {
     if (!processing) return;
     loadingPanel.current?.focus({ preventScroll: true });
@@ -266,16 +276,56 @@ export default function App() {
     chooseFile(e.dataTransfer.files[0]);
   }
   function analyse() {
-    if (processing || !selectedFile) return;
+    if (processing || processingTimer.current || !selectedFile) return;
+    try {
+      const current = readPackages(localStorage);
+      setWallet(current);
+      if (demoBalance(current) <= 0) {
+        savePackageAction(localStorage, { type: "list" });
+        routeTo("/pacotes");
+        return;
+      }
+    } catch {
+      setFileError("Não foi possível consultar o saldo. Permita o armazenamento neste navegador e tente novamente.");
+      return;
+    }
+    const usageId = `usage-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
     setProcessingStep(0);
     setProcessing(true);
     setFileError("");
     processingTimer.current = setTimeout(() => {
       processingTimer.current = null;
-      const next = acceptFile(store, selectedFile);
-      setStore(next.store);
-      setProcessing(false);
-      routeTo(resultLink(next.record.id));
+      try {
+        // Check again at completion: another tab may have spent the last credit.
+        if (demoBalance(readPackages(localStorage)) <= 0) throw new NoCreditsError();
+        const previous = loadStore(localStorage);
+        const next = acceptFile(previous, selectedFile);
+        if (!persistStore(localStorage, next.store)) throw new Error("Não foi possível guardar a análise.");
+        let updated;
+        try {
+          updated = savePackageAction(localStorage, { type: "consume", id: usageId });
+        } catch (error) {
+          persistStore(localStorage, previous);
+          throw error;
+        }
+        setStore(next.store);
+        setWallet(updated);
+        if (demoBalance(updated) === 0) {
+          setToast("Análise concluída. As suas verificações terminaram. Consulte o resultado no histórico.");
+          routeTo("/pacotes");
+        } else {
+          routeTo(resultLink(next.record.id));
+        }
+      } catch (error) {
+        if (error instanceof NoCreditsError) {
+          try { setWallet(savePackageAction(localStorage, { type: "list" })); } catch { /* No credit was consumed. */ }
+          routeTo("/pacotes");
+        } else {
+          setFileError("Não foi possível concluir a análise. Não foi descontada nenhuma verificação. Tente novamente.");
+        }
+      } finally {
+        setProcessing(false);
+      }
     }, 3000);
   }
   function analyseAnother() {
@@ -350,6 +400,12 @@ export default function App() {
           </div>
         </header>
         <main id="main-content" className="page" tabIndex={-1}>
+          {!isPackages && !isHistory && !isAbout && (
+            <div className="analysis-balance" role="status">
+              <div><strong>{demoBalance(wallet)} {demoBalance(wallet) === 1 ? "verificação restante" : "verificações restantes"}</strong><span>Saldo de demonstração</span></div>
+              <a className="inline-link" href="#/pacotes">Ver pacotes <ArrowRight size={15} /></a>
+            </div>
+          )}
           {storageWarning && (
             <div className="notice notice-warm" role="status">
               <Info size={19} />
@@ -386,7 +442,7 @@ export default function App() {
           ) : isHistory ? (
             renderHistory()
           ) : isPackages ? (
-            renderPackages()
+            <PackagesPage />
           ) : isAbout ? (
             renderAbout()
           ) : (
@@ -1041,31 +1097,6 @@ export default function App() {
           <Info size={15} />
           O histórico fica guardado apenas neste navegador.
         </p>
-      </>
-    );
-  }
-
-  function renderPackages() {
-    return (
-      <>
-        <PageHeading headingRef={heading} subtitle="Compare as opções de utilização do Tcheka para o seu negócio.">
-          Pacotes
-        </PageHeading>
-        <div className="packages-grid">
-          {PACKAGES.map((plan) => (
-            <article className="panel package-card" key={plan.name}>
-              <span className="package-billing"><Package size={16} aria-hidden="true" />{plan.billing}</span>
-              <h2>{plan.name}</h2>
-              <div className="package-price">
-                <strong>{formatMoney(plan.amount)}</strong>
-                <span>{plan.period}</span>
-              </div>
-              <p>{plan.description}</p>
-            </article>
-          ))}
-        </div>
-        <p className="packages-note">Estes valores são pagos pelo comerciante para utilizar o Tcheka.</p>
-        <a className="secondary packages-back" href="#/analisar"><ArrowLeft size={17} />Voltar a analisar</a>
       </>
     );
   }

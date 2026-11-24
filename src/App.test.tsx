@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { DEMO_EXAMPLES, RESULT_LABELS, DISCLAIMER, analyseExample, initialStore } from "./domain";
 import type { Store } from "./domain";
 import { STORAGE_KEY } from "./storage";
+import { demoBalance, readPackages, savePackageAction } from "./packages";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "https://tcheka.test/",
@@ -46,11 +47,93 @@ afterEach(() => {
   localStorage.clear();
 });
 
+test("paid package shows quantity and single-purchase terms before simulated payment, and resumes after reload", async () => {
+  let user = mount("/pacotes");
+  assert.ok(screen.getByText("Preços propostos para teste"));
+  await user.click(screen.getByRole("button", { name: "Comprar pacote" }));
+  assert.ok(screen.getByRole("heading", { name: "Resumo da escolha" }));
+  assert.ok(screen.getByText("1.000 Kz"));
+  assert.ok(screen.getByText("10 verificações pré-pagas"));
+  assert.ok(screen.getByText("Compra única, sem mensalidade"));
+  assert.equal(demoBalance(readPackages(localStorage)), 0);
+  await user.click(screen.getByRole("button", { name: "Confirmar escolha" }));
+  assert.ok(screen.getByRole("heading", { name: "Simulação de pagamento" }));
+  assert.ok(screen.getByText("Banco Exemplo (fictício)"));
+  cleanup();
+  user = mount("/pacotes", true);
+  assert.ok(screen.getByRole("heading", { name: "Simulação de pagamento" }));
+  await user.dblClick(screen.getByRole("button", { name: "Concluir simulação" }));
+  assert.ok(screen.getByText("Demonstração concluída. Nenhum valor foi cobrado."));
+  assert.equal(demoBalance(readPackages(localStorage)), 10);
+  cleanup();
+  mount("/pacotes", true);
+  assert.ok(screen.getByText("Demonstração concluída. Nenhum valor foi cobrado."));
+  assert.equal(demoBalance(readPackages(localStorage)), 10);
+});
+
+test("free activation bypasses payment, survives reload, and cannot be granted twice", async () => {
+  let user = mount("/pacotes");
+  await user.dblClick(screen.getByRole("button", { name: "Experimentar grátis" }));
+  assert.ok(screen.getByRole("heading", { name: "Teste grátis activado" }));
+  assert.equal(screen.queryByRole("heading", { name: "Simulação de pagamento" }), null);
+  assert.equal(demoBalance(readPackages(localStorage)), 3);
+  cleanup();
+  user = mount("/pacotes", true);
+  await waitFor(() => assert.equal((screen.getByRole("button", { name: "Voltar aos pacotes" }) as HTMLButtonElement).disabled, false));
+  await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
+  assert.equal((screen.getByRole("button", { name: "Experimentar grátis" }) as HTMLButtonElement).disabled, true);
+  assert.equal(demoBalance(readPackages(localStorage)), 3);
+});
+
+test("monthly packages show monthly amounts and quantities before confirmation", async () => {
+  const user = mount("/pacotes");
+  for (const [button, amount, quantity] of [["Escolher Essencial", "2.000 Kz", "30 verificações por mês"], ["Escolher Negócio", "4.000 Kz", "80 verificações por mês"]]) {
+    await user.click(screen.getByRole("button", { name: button }));
+    assert.ok(screen.getByText(`Mensalidade de ${amount}`));
+    assert.ok(screen.getByText(quantity));
+    await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
+  }
+  assert.equal(demoBalance(readPackages(localStorage)), 0);
+});
+
 async function submitFile(user: ReturnType<typeof userEvent.setup>, file = new File(["comprovativo"], "recibo.pdf", { type: "application/pdf" })) {
+  if (!readPackages(localStorage).grants.length) savePackageAction(localStorage, { type: "select", packageId: "free", id: "test-fixture" });
   await user.upload(screen.getByLabelText("Seleccionar comprovativo"), file);
   await user.click(mainAnalyse());
   await screen.findByRole("heading", { name: RESULT_LABELS.unverified }, { timeout: 4500 });
 }
+
+test("free quota decreases on completion, survives reload and redirects after the third result without losing it", async () => {
+  let user = mount("/pacotes");
+  await user.click(screen.getByRole("button", { name: "Experimentar grátis" }));
+  await waitFor(() => assert.equal((screen.getByRole("button", { name: "Analisar comprovativo" }) as HTMLButtonElement).disabled, false));
+  await user.click(screen.getByRole("button", { name: "Analisar comprovativo" }));
+  await screen.findByRole("heading", { name: "Analisar comprovativo", level: 1 });
+  assert.ok(screen.getByText("3 verificações restantes"));
+  for (let n = 1; n <= 2; n++) {
+    await submitFile(user);
+    assert.ok(screen.getByText(n === 1 ? "2 verificações restantes" : "1 verificação restante"));
+    await user.click(screen.getByRole("button", { name: "Analisar outro comprovativo" }));
+    await screen.findByRole("heading", { name: "Analisar comprovativo", level: 1 });
+  }
+  cleanup();
+  user = mount("/analisar", true);
+  assert.ok(screen.getByText("1 verificação restante"));
+  await user.upload(screen.getByLabelText("Seleccionar comprovativo"), new File(["terceiro"], "terceiro.pdf"));
+  await user.dblClick(mainAnalyse());
+  await screen.findByRole("heading", { name: "Pacotes", level: 1 }, { timeout: 4500 });
+  assert.ok(screen.getByText("As suas 3 verificações grátis terminaram."));
+  assert.equal(demoBalance(readPackages(localStorage)), 0);
+  assert.equal(saved().analyses.length, 3);
+  assert.equal(saved().analyses[2].fileName, "terceiro.pdf");
+  await user.click(screen.getByRole("link", { name: "Analisar comprovativo" }));
+  await screen.findByRole("heading", { name: "Analisar comprovativo", level: 1 });
+  await user.upload(screen.getByLabelText("Seleccionar comprovativo"), new File(["quarto"], "quarto.pdf"));
+  await user.click(mainAnalyse());
+  await screen.findByRole("heading", { name: "Pacotes", level: 1 });
+  assert.equal(saved().analyses.length, 3);
+  assert.equal(demoBalance(readPackages(localStorage)), 0);
+});
 
 test("home removes all four examples and accepts an unrestricted file without claiming analysis", async () => {
   const user = mount();

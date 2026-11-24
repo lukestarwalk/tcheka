@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "test": "tsx --test src/domain.test.ts src/App.test.tsx"
+    "test": "tsx --test src/domain.test.ts src/packages.test.ts src/App.test.tsx"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

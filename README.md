@@ -34,7 +34,26 @@ Não são necessários conta, credenciais ou ficheiros de exemplo. Para repetir 
 
 ## Pacotes
 
-A aba «Pacotes» (`#/pacotes`) apresenta as quatro opções propostas: Grátis (0 Kz), Pacote de créditos pré-pagos (1.500 Kz por pacote, compra avulsa), Plano Essencial (2.000 Kz por mês) e Plano Negócio (5.000 Kz por mês). Esta página apresenta preços; ainda não há checkout ou meios de pagamento implementados.
+A aba «Pacotes» (`#/pacotes`) mostra «Preços propostos para teste», com hipóteses a validar com comerciantes:
+
+| Opção | Preço | Verificações | Modalidade |
+| --- | --- | --- | --- |
+| Grátis | 0 Kz | 3 de teste | Uma única vez por conta |
+| Pacote avulso | 1.000 Kz | 10 pré-pagas | Compra única |
+| Essencial | 2.000 Kz/mês | 30 por mês | Mensalidade |
+| Negócio | 4.000 Kz/mês | 80 por mês | Mensalidade |
+
+Percurso pago: escolher opção → «Resumo da escolha» → «Confirmar escolha» → «Simulação de pagamento» → «Concluir simulação» → «Demonstração concluída. Nenhum valor foi cobrado.» O resumo identifica quantidade, valor e compra única ou mensalidade. A transferência usa banco, beneficiário, referência e IBAN fictícios; não existe integração bancária nem cobrança real. A opção grátis vai directamente para a confirmação, sem pagamento.
+
+Não existem contas ou saldo de verificações no modelo anterior. O percurso acrescenta **saldo de demonstração local**, guardado na chave `tcheka-packages-v1`, separado do histórico de documentos. Cada escolha concluída tem um identificador único; o saldo é reconstruído a partir de concessões sem duplicados. A oferta grátis usa um identificador fixo. Cliques repetidos e recarregamentos não voltam a atribuir créditos. Uma nova compra deliberada atribui um novo pacote. O passo de resumo, pagamento ou conclusão também é recuperado após recarregar.
+
+A regra grátis é aplicada uma vez **por navegador**, não por identidade real: limpar os dados ou usar outro navegador reinicia a demonstração. Limpar o histórico de documentos não limpa as escolhas dos pacotes. Se o armazenamento falhar, a interface mostra um erro e não confirma activação. Cada análise concluída desconta uma verificação do saldo de demonstração. O contador aparece na página de análise e no resultado. Ao chegar a zero, o percurso abre a lista de pacotes; o resultado da última análise continua no histórico. Sem saldo, não é possível concluir outra análise. Interromper o carregamento não consome créditos; voltar a abrir um resultado ou actualizar a página também não. Limpar o histórico não repõe verificações. Os consumos têm identificadores únicos e persistem na mesma chave dos pacotes. Escolhas guardadas antes desta alteração mantêm o saldo e começam a contabilizar consumo nas novas análises. Não existem renovação mensal automática nem créditos de produção. Para produção, faltam autenticação, saldo no servidor e confirmação de pagamento pelo prestador.
+
+Para ensaiar outra vez, clique «Voltar aos pacotes» na conclusão e comece uma nova escolha. Não precisa de apagar o histórico. Para ensaiar de zero, use um novo perfil de navegador ou remova apenas `tcheka-packages-v1` nas ferramentas de desenvolvimento e actualize a página.
+
+Gravação de 24 segundos: 0–4 s, abrir «Pacotes» e mostrar os preços propostos; 4–8 s, descer e clicar «Comprar pacote»; 8–13 s, mostrar 1.000 Kz, 10 verificações e compra única, depois «Confirmar escolha»; 13–19 s, mostrar «Simulação de pagamento», descer aos dados fictícios e clicar «Concluir simulação»; 19–24 s, manter a mensagem final visível. O vídeo não necessita de qualquer comprovativo nem pagamento bancário.
+
+Verificação: `node --import tsx --test src/domain.test.ts src/packages.test.ts src/App.test.tsx` cobre os percursos, persistência, idempotência, cancelamento, armazenamento bloqueado e distinção de compra única/mensalidade.
 
 «Banco BFA» é uma indicação configurada para o percurso da demonstração, não um banco identificado por leitura do ficheiro.
 

@@ -41,6 +41,7 @@ A aba «Pacotes» (`#/pacotes`) apresenta as seguintes opções:
 | Grátis | 0 Kz | 3 por dia | Renovação à meia-noite de Angola, sem acumulação |
 | Pacote avulso | 1.500 Kz | 10 pré-pagas | Compra única |
 | Essencial | 2.000 Kz/mês | 30 por mês | Mensalidade |
+| Negócio | 5.000 Kz/mês | 80 por mês | Mensalidade |
 
 Percurso pago: escolher opção → «Resumo da escolha» → «Confirmar escolha» → «Simulação de pagamento» → «Concluir simulação» → «Demonstração concluída. Nenhum valor foi cobrado.» O resumo identifica quantidade, valor e compra única ou mensalidade. A transferência usa banco, beneficiário, referência e IBAN fictícios; não existe integração bancária nem cobrança real. O plano Grátis é activado automaticamente na primeira visita, com 3 verificações disponíveis, sem confirmação nem pagamento. A aba Pacotes mostra «Grátis activado».
 

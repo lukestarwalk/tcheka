@@ -285,7 +285,7 @@ p { font-size: 14px; }
 @media (max-width: 500px) { .verification-loading { padding: 24px 16px; } .verification-loading h3 { font-size: 19px; } }
 @media (prefers-reduced-motion: reduce) { .verification-orbit, .verification-scan { animation: none; } .verification-progress > span { transition: none; } }
 
-.packages-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.packages-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 .packages-grid > .package-card { margin: 0; }
 .package-card { display: flex; flex-direction: column; align-items: flex-start; padding: 26px 22px; min-width: 0; }
 .package-billing { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 99px; color: #71541b; background: #fff6d9; font-size: 12px; font-weight: 600; }

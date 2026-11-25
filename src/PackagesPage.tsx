@@ -84,7 +84,7 @@ export default function PackagesPage() {
             <div className="notice notice-warm credits-exhausted" role="status"><Info size={20} /><strong>{state.grants.every((grant) => grant.packageId === "free") ? "As suas 3 verificações grátis de hoje terminaram." : "As suas verificações terminaram."}</strong></div>
           )}
           <div className="packages-grid">
-            {PACKAGES.filter((item) => item.id !== "business").map((item) => (
+            {PACKAGES.map((item) => (
               <article className="panel package-card" key={item.id}>
                 <span className="package-billing"><Package size={16} aria-hidden="true" />{item.billing}</span>
                 <h2>{item.name}</h2>

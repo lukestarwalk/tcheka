@@ -88,13 +88,14 @@ test("the first visit activates free automatically on every entry route and surv
   }
 });
 
-test("the remaining monthly plan shows its amount and quantity before confirmation", async () => {
+test("monthly packages show monthly amounts and quantities before confirmation", async () => {
   const user = mount("/pacotes");
-  assert.equal(screen.queryByRole("heading", { name: "Negócio" }), null);
-  await user.click(screen.getByRole("button", { name: "Escolher Essencial" }));
-  assert.ok(screen.getByText("Mensalidade de 2.000 Kz"));
-  assert.ok(screen.getByText("30 verificações por mês"));
-  await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
+  for (const [button, amount, quantity] of [["Escolher Essencial", "2.000 Kz", "30 verificações por mês"], ["Escolher Negócio", "5.000 Kz", "80 verificações por mês"]]) {
+    await user.click(screen.getByRole("button", { name: button }));
+    assert.ok(screen.getByText(`Mensalidade de ${amount}`));
+    assert.ok(screen.getByText(quantity));
+    await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
+  }
   assert.equal(demoBalance(readPackages(localStorage)), 3);
 });
 

@@ -30,13 +30,24 @@ export default function PackagesPage() {
     return () => clearTimeout(timer);
   }, [step, checkout?.id]);
   useEffect(() => {
+    const refresh = () => {
+      try { setState(readPackages(localStorage)); } catch { /* Keep the current view. */ }
+    };
     const sync = (event: StorageEvent) => {
       if (event.key === PACKAGE_STORAGE_KEY || event.key === null) {
-        try { setState(readPackages(localStorage)); } catch { /* Keep the current view. */ }
+        refresh();
       }
     };
     window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = setInterval(refresh, 30_000);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      clearInterval(timer);
+    };
   }, []);
 
   function act(action: PackageAction) {
@@ -68,12 +79,12 @@ export default function PackagesPage() {
 
       {step === "list" ? (
         <>
-          <div className="packages-context"><span className="package-billing"><Info size={16} />Preços propostos para teste</span><span className="demo-balance">Saldo de demonstração: <strong>{balance} verificações restantes</strong></span></div>
+          <div className="packages-context"><span className="demo-balance">Saldo de demonstração: <strong>{balance} verificações restantes</strong></span></div>
           {balance === 0 && state.grants.length > 0 && (
-            <div className="notice notice-warm credits-exhausted" role="status"><Info size={20} /><div><strong>{state.grants.every((grant) => grant.packageId === "free") ? "As suas 3 verificações grátis terminaram." : "As suas verificações terminaram."}</strong><p>Escolha um pacote para continuar. Os resultados anteriores estão disponíveis no histórico.</p><a className="inline-link" href="#/historico">Consultar histórico</a></div></div>
+            <div className="notice notice-warm credits-exhausted" role="status"><Info size={20} /><strong>{state.grants.every((grant) => grant.packageId === "free") ? "As suas 3 verificações grátis de hoje terminaram." : "As suas verificações terminaram."}</strong></div>
           )}
           <div className="packages-grid">
-            {PACKAGES.map((item) => (
+            {PACKAGES.filter((item) => item.id !== "business").map((item) => (
               <article className="panel package-card" key={item.id}>
                 <span className="package-billing"><Package size={16} aria-hidden="true" />{item.billing}</span>
                 <h2>{item.name}</h2>
@@ -81,21 +92,19 @@ export default function PackagesPage() {
                 <p className="package-allowance">{item.allowance}</p>
                 <p className="package-terms">{item.terms}</p>
                 <button className={item.id === "single" ? "primary" : "secondary"} onClick={() => select(item.id)} disabled={item.id === "free" && freeActivated(state)}>{item.id === "free" && freeActivated(state) ? "Grátis activado" : item.button}<ArrowRight size={16} /></button>
-                {item.id === "free" && freeActivated(state) && <small className="package-used">Activado automaticamente na primeira visita.</small>}
+                {item.id === "free" && freeActivated(state) && <small className="package-used">Activado automaticamente. Inclui 3 verificações grátis todos os dias.</small>}
               </article>
             ))}
           </div>
-          <p className="packages-note">O comerciante paga pela utilização do Tcheka. Estes preços e quantidades são hipóteses a testar com comerciantes.</p>
-          <p className="packages-local">Nesta demonstração, os créditos e a activação grátis ficam guardados apenas neste navegador. Ainda não existem contas de utilizador.</p>
         </>
       ) : plan && (
         <div className="checkout-content">
           {step === "done" ? (
             <section className="panel checkout-success" aria-labelledby="completion-message">
               <span className="checkout-success-icon"><CheckCircle2 size={34} /></span>
-              <h2 id="completion-message">{isFree ? "As 3 verificações de teste foram activadas." : "Demonstração concluída. Nenhum valor foi cobrado."}</h2>
+              <h2 id="completion-message">{isFree ? "O plano grátis diário está activado." : "Demonstração concluída. Nenhum valor foi cobrado."}</h2>
               <p>{plan.name} · {plan.allowance}</p>
-              <p>{isFree ? "Sem pagamento. A oferta grátis só é atribuída uma vez neste navegador." : `${plan.credits} verificações atribuídas ao saldo de demonstração. Não foi criada uma compra ou subscrição real.`}</p>
+              <p>{isFree ? "Sem pagamento. São 3 verificações por dia, renovadas à meia-noite de Angola, sem acumulação." : `${plan.credits} verificações atribuídas ao saldo de demonstração. Não foi criada uma compra ou subscrição real.`}</p>
               <div className="checkout-balance">Saldo de demonstração<strong>{balance} verificações</strong></div>
               <div className="checkout-actions"><button className="primary" disabled={!completionReady} onClick={() => { window.location.hash = "/analisar"; }}>Analisar comprovativo<ArrowRight size={17} /></button><button className="secondary" disabled={!completionReady} onClick={() => act({ type: "list" })}>Voltar aos pacotes</button></div>
             </section>
@@ -108,7 +117,6 @@ export default function PackagesPage() {
                   <div><dt>Verificações incluídas</dt><dd>{plan.allowance}</dd></div>
                   <div><dt>Modalidade de cobrança</dt><dd>{plan.id === "single" ? "Compra única, sem mensalidade" : `Mensalidade de ${formatMoney(plan.amount)}`}</dd></div>
                 </dl>
-                <p className="checkout-price-note">Preços propostos para teste</p>
               </section>
               {step === "review" ? (
                 <>

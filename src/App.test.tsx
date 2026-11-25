@@ -49,10 +49,10 @@ afterEach(() => {
 
 test("paid package shows quantity and single-purchase terms before simulated payment, and resumes after reload", async () => {
   let user = mount("/pacotes");
-  assert.ok(screen.getByText("Preços propostos para teste"));
+  assert.equal(screen.queryByText("Preços propostos para teste"), null);
   await user.click(screen.getByRole("button", { name: "Comprar pacote" }));
   assert.ok(screen.getByRole("heading", { name: "Resumo da escolha" }));
-  assert.ok(screen.getByText("1.000 Kz"));
+  assert.ok(screen.getByText("1.500 Kz"));
   assert.ok(screen.getByText("10 verificações pré-pagas"));
   assert.ok(screen.getByText("Compra única, sem mensalidade"));
   assert.equal(demoBalance(readPackages(localStorage)), 3);
@@ -88,14 +88,13 @@ test("the first visit activates free automatically on every entry route and surv
   }
 });
 
-test("monthly packages show monthly amounts and quantities before confirmation", async () => {
+test("the remaining monthly plan shows its amount and quantity before confirmation", async () => {
   const user = mount("/pacotes");
-  for (const [button, amount, quantity] of [["Escolher Essencial", "2.000 Kz", "30 verificações por mês"], ["Escolher Negócio", "4.000 Kz", "80 verificações por mês"]]) {
-    await user.click(screen.getByRole("button", { name: button }));
-    assert.ok(screen.getByText(`Mensalidade de ${amount}`));
-    assert.ok(screen.getByText(quantity));
-    await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
-  }
+  assert.equal(screen.queryByRole("heading", { name: "Negócio" }), null);
+  await user.click(screen.getByRole("button", { name: "Escolher Essencial" }));
+  assert.ok(screen.getByText("Mensalidade de 2.000 Kz"));
+  assert.ok(screen.getByText("30 verificações por mês"));
+  await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
   assert.equal(demoBalance(readPackages(localStorage)), 3);
 });
 
@@ -107,7 +106,7 @@ async function submitFile(user: ReturnType<typeof userEvent.setup>, file = new F
 
 test("free quota decreases on completion, survives reload and redirects after the third result without losing it", async () => {
   let user = mount("/analisar");
-  assert.ok(screen.getByText("Plano Grátis"));
+  assert.ok(screen.getByText("Plano Grátis · 3 por dia"));
   assert.ok(screen.getByText("3 verificações restantes"));
   for (let n = 1; n <= 2; n++) {
     await submitFile(user);
@@ -121,7 +120,7 @@ test("free quota decreases on completion, survives reload and redirects after th
   await user.upload(screen.getByLabelText("Seleccionar comprovativo"), new File(["terceiro"], "terceiro.pdf"));
   await user.dblClick(mainAnalyse());
   await screen.findByRole("heading", { name: "Pacotes", level: 1 }, { timeout: 4500 });
-  assert.ok(screen.getByText("As suas 3 verificações grátis terminaram."));
+  assert.ok(screen.getByText("As suas 3 verificações grátis de hoje terminaram."));
   assert.equal(demoBalance(readPackages(localStorage)), 0);
   assert.equal(saved().analyses.length, 3);
   assert.equal(saved().analyses[2].fileName, "terceiro.pdf");

@@ -76,7 +76,7 @@ function startStore(): Store {
 }
 function ResultBadge({ result }: { result: ResultState }) {
   return (
-    <span className={`result-badge badge-${result === "unverified" ? "inconclusive" : result}`}>
+    <span className={`result-badge badge-${result === "unverified" ? "clear" : result}`}>
       {result === "clear" ? (
         <CheckCircle2 size={13} />
       ) : result === "irregular" ? (
@@ -176,7 +176,15 @@ export default function App() {
       if (event.key === PACKAGE_STORAGE_KEY || event.key === null) refresh();
     };
     window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = setInterval(refresh, 30_000);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      clearInterval(timer);
+    };
   }, [route]);
   useEffect(() => {
     if (!processing) return;
@@ -411,7 +419,7 @@ export default function App() {
         <main id="main-content" className="page" tabIndex={-1}>
           {!isPackages && !isHistory && !isAbout && (
             <div className="analysis-balance" role="status">
-              <div><strong>{demoBalance(wallet)} {demoBalance(wallet) === 1 ? "verificação restante" : "verificações restantes"}</strong><span>{wallet.grants.length > 0 && wallet.grants.every((grant) => grant.packageId === "free") ? "Plano Grátis" : "Saldo de demonstração"}</span></div>
+              <div><strong>{demoBalance(wallet)} {demoBalance(wallet) === 1 ? "verificação restante" : "verificações restantes"}</strong><span>{wallet.grants.length > 0 && wallet.grants.every((grant) => grant.packageId === "free") ? "Plano Grátis · 3 por dia" : "Saldo de demonstração"}</span></div>
               <a className="inline-link" href="#/pacotes">Ver pacotes <ArrowRight size={15} /></a>
             </div>
           )}

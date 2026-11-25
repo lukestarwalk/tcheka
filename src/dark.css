@@ -47,7 +47,8 @@
   :root[data-theme="dark"] .demo-example.selected { background: #3c3223; border-color: #ffd43b; box-shadow: inset 0 0 0 1px #ffd43b; }
   :root[data-theme="dark"] .demo-radio { background: #232329; border-color: #9999a5; }
   :root[data-theme="dark"] .demo-example.selected .demo-radio { background: #ffd43b; color: #232323; border-color: #ffd43b; }
-  :root[data-theme="dark"] :is(.example-consistent, .example-repeated, .badge-clear, .check-neutral) { background: var(--dark-info-bg); color: var(--dark-info-text); }
+  :root[data-theme="dark"] :is(.example-consistent, .example-repeated, .check-neutral) { background: var(--dark-info-bg); color: var(--dark-info-text); }
+  :root[data-theme="dark"] .badge-clear { background: #193c2c; color: #a7e8bd; }
   :root[data-theme="dark"] :is(.example-altered, .example-illegible, .check-warm, .badge-irregular) { background: var(--dark-warm-bg); color: var(--dark-warm-text); }
   :root[data-theme="dark"] :is(.demo-example-text > span, .demo-example-text small, .upload-zone > span, .upload-zone > small, .upload-zone .upload-meta,
     .analysis-guide p, .analysis-guide li, .analysis-guide .file-original-note, .file-original-note svg,
@@ -65,9 +66,9 @@
   :root[data-theme="dark"] :is(.page-footer, .check-item, .document-summary > dl) { border-color: var(--line); color: var(--muted); }
   :root[data-theme="dark"] .about-intro { background: #2c271e; border-color: #51452e; }
   :root[data-theme="dark"] .eyebrow { color: var(--dark-warm-text); }
-  :root[data-theme="dark"] .result-clear { background: var(--dark-info-bg); border-color: #425e85; }
-  :root[data-theme="dark"] :is(.result-clear h2, .result-clear p, .result-clear .result-label) { color: var(--dark-info-text); }
-  :root[data-theme="dark"] .result-clear .result-icon { background: #30496a; color: var(--dark-info-text); }
+  :root[data-theme="dark"] .result-clear { background: #193c2c; border-color: #397553; }
+  :root[data-theme="dark"] :is(.result-clear h2, .result-clear p, .result-clear .result-label) { color: #a7e8bd; }
+  :root[data-theme="dark"] .result-clear .result-icon { background: #28593d; color: #a7e8bd; }
   :root[data-theme="dark"] :is(.result-irregular, .duplicate-alert, .notice-warm) { background: var(--dark-warm-bg); border-color: #77603a; }
   :root[data-theme="dark"] :is(.result-irregular h2, .result-irregular p, .result-irregular ul, .result-irregular .result-label,
     .duplicate-alert h3, .duplicate-alert p, .duplicate-alert a, .duplicate-alert > svg,

@@ -117,3 +117,37 @@ test("old saved choices keep their credits and stored usages cannot duplicate de
   assert.equal(demoBalance(sanitizePackages({ ...state, used: ["usage-one", "usage-one", "invalid"] })), 2);
   assert.equal(demoBalance(sanitizePackages({ ...state, used: ["usage-1", "usage-2", "usage-3", "usage-4"] })), 0);
 });
+
+test("daily free credits renew at midnight in Angola, do not accumulate, and preserve paid balance", () => {
+  const storage = memoryStorage();
+  const beforeMidnight = new Date("2026-11-25T22:59:59Z");
+  const midnight = new Date("2026-11-25T23:00:00Z");
+  const later = new Date("2026-11-30T10:00:00Z");
+  initializePackages(storage, beforeMidnight);
+  savePackageAction(storage, { type: "select", packageId: "single", id: "checkout-daily" }, beforeMidnight);
+  savePackageAction(storage, { type: "payment" }, beforeMidnight);
+  savePackageAction(storage, { type: "confirm" }, beforeMidnight);
+  for (let n = 1; n <= 4; n++) savePackageAction(storage, { type: "consume", id: `usage-day-one-${n}` }, beforeMidnight);
+  const state = readPackages(storage, beforeMidnight);
+  assert.equal(state.freeUsage.length, 3, "free quota is used before paid credits");
+  assert.equal(demoBalance(state, beforeMidnight), 9);
+  assert.equal(demoBalance(initializePackages(storage, midnight), midnight), 12);
+  assert.equal(demoBalance(savePackageAction(storage, { type: "consume", id: "usage-day-one-1" }, midnight), midnight), 12, "retrying an old request never consumes another day");
+  for (let n = 1; n <= 3; n++) savePackageAction(storage, { type: "consume", id: `usage-day-two-${n}` }, midnight);
+  assert.equal(demoBalance(readPackages(storage, midnight), midnight), 9);
+  assert.equal(demoBalance(initializePackages(storage, later), later), 12, "several unused days still grant only 3 free uses");
+  savePackageAction(storage, { type: "consume", id: "usage-later" }, later);
+  assert.equal(demoBalance(initializePackages(storage, later), later), 11, "reloads preserve today's use");
+});
+
+test("migration preserves exhausted free allowance today and renews it tomorrow", () => {
+  const storage = memoryStorage();
+  const today = new Date("2026-11-25T12:00:00Z");
+  const tomorrow = new Date("2026-11-26T12:00:00Z");
+  storage.setItem(PACKAGE_STORAGE_KEY, JSON.stringify({ version: 1, grants: [{ id: "free-trial", packageId: "free" }], used: ["usage-1", "usage-2", "usage-3"], checkout: null }));
+  assert.equal(demoBalance(initializePackages(storage, today), today), 0);
+  assert.throws(() => savePackageAction(storage, { type: "consume", id: "usage-4" }, today), NoCreditsError);
+  assert.equal(demoBalance(initializePackages(storage, tomorrow), tomorrow), 3);
+  savePackageAction(storage, { type: "consume", id: "usage-4" }, tomorrow);
+  assert.equal(demoBalance(initializePackages(storage, tomorrow), tomorrow), 2);
+});

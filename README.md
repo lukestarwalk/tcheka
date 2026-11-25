@@ -43,7 +43,7 @@ A aba «Pacotes» (`#/pacotes`) mostra «Preços propostos para teste», com hip
 | Essencial | 2.000 Kz/mês | 30 por mês | Mensalidade |
 | Negócio | 4.000 Kz/mês | 80 por mês | Mensalidade |
 
-Percurso pago: escolher opção → «Resumo da escolha» → «Confirmar escolha» → «Simulação de pagamento» → «Concluir simulação» → «Demonstração concluída. Nenhum valor foi cobrado.» O resumo identifica quantidade, valor e compra única ou mensalidade. A transferência usa banco, beneficiário, referência e IBAN fictícios; não existe integração bancária nem cobrança real. A opção grátis vai directamente para a confirmação, sem pagamento.
+Percurso pago: escolher opção → «Resumo da escolha» → «Confirmar escolha» → «Simulação de pagamento» → «Concluir simulação» → «Demonstração concluída. Nenhum valor foi cobrado.» O resumo identifica quantidade, valor e compra única ou mensalidade. A transferência usa banco, beneficiário, referência e IBAN fictícios; não existe integração bancária nem cobrança real. O plano Grátis é activado automaticamente na primeira visita, com 3 verificações disponíveis, sem confirmação nem pagamento. A aba Pacotes mostra «Grátis activado».
 
 Não existem contas ou saldo de verificações no modelo anterior. O percurso acrescenta **saldo de demonstração local**, guardado na chave `tcheka-packages-v1`, separado do histórico de documentos. Cada escolha concluída tem um identificador único; o saldo é reconstruído a partir de concessões sem duplicados. A oferta grátis usa um identificador fixo. Cliques repetidos e recarregamentos não voltam a atribuir créditos. Uma nova compra deliberada atribui um novo pacote. O passo de resumo, pagamento ou conclusão também é recuperado após recarregar.
 

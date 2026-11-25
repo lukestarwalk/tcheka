@@ -4,7 +4,7 @@ import { JSDOM } from "jsdom";
 import { DEMO_EXAMPLES, RESULT_LABELS, DISCLAIMER, analyseExample, initialStore } from "./domain";
 import type { Store } from "./domain";
 import { STORAGE_KEY } from "./storage";
-import { demoBalance, readPackages, savePackageAction } from "./packages";
+import { demoBalance, readPackages } from "./packages";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "https://tcheka.test/",
@@ -55,7 +55,7 @@ test("paid package shows quantity and single-purchase terms before simulated pay
   assert.ok(screen.getByText("1.000 Kz"));
   assert.ok(screen.getByText("10 verificações pré-pagas"));
   assert.ok(screen.getByText("Compra única, sem mensalidade"));
-  assert.equal(demoBalance(readPackages(localStorage)), 0);
+  assert.equal(demoBalance(readPackages(localStorage)), 3);
   await user.click(screen.getByRole("button", { name: "Confirmar escolha" }));
   assert.ok(screen.getByRole("heading", { name: "Simulação de pagamento" }));
   assert.ok(screen.getByText("Banco Exemplo (fictício)"));
@@ -64,25 +64,28 @@ test("paid package shows quantity and single-purchase terms before simulated pay
   assert.ok(screen.getByRole("heading", { name: "Simulação de pagamento" }));
   await user.dblClick(screen.getByRole("button", { name: "Concluir simulação" }));
   assert.ok(screen.getByText("Demonstração concluída. Nenhum valor foi cobrado."));
-  assert.equal(demoBalance(readPackages(localStorage)), 10);
+  assert.equal(demoBalance(readPackages(localStorage)), 13);
   cleanup();
   mount("/pacotes", true);
   assert.ok(screen.getByText("Demonstração concluída. Nenhum valor foi cobrado."));
-  assert.equal(demoBalance(readPackages(localStorage)), 10);
+  assert.equal(demoBalance(readPackages(localStorage)), 13);
 });
 
-test("free activation bypasses payment, survives reload, and cannot be granted twice", async () => {
-  let user = mount("/pacotes");
-  await user.dblClick(screen.getByRole("button", { name: "Experimentar grátis" }));
-  assert.ok(screen.getByRole("heading", { name: "Teste grátis activado" }));
-  assert.equal(screen.queryByRole("heading", { name: "Simulação de pagamento" }), null);
-  assert.equal(demoBalance(readPackages(localStorage)), 3);
-  cleanup();
-  user = mount("/pacotes", true);
-  await waitFor(() => assert.equal((screen.getByRole("button", { name: "Voltar aos pacotes" }) as HTMLButtonElement).disabled, false));
-  await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
-  assert.equal((screen.getByRole("button", { name: "Experimentar grátis" }) as HTMLButtonElement).disabled, true);
-  assert.equal(demoBalance(readPackages(localStorage)), 3);
+test("the first visit activates free automatically on every entry route and survives reloads", async () => {
+  for (const route of ["/analisar", "/pacotes", "/historico", "/sobre"]) {
+    let user = mount(route);
+    assert.equal(demoBalance(readPackages(localStorage)), 3);
+    assert.equal(readPackages(localStorage).checkout, null);
+    assert.equal(screen.queryByRole("heading", { name: "Simulação de pagamento" }), null);
+    cleanup();
+    user = mount("/pacotes", true);
+    const freeButton = screen.getByRole("button", { name: "Grátis activado" }) as HTMLButtonElement;
+    assert.equal(freeButton.disabled, true);
+    await user.dblClick(freeButton);
+    assert.equal(demoBalance(readPackages(localStorage)), 3);
+    assert.equal(readPackages(localStorage).grants.length, 1);
+    cleanup();
+  }
 });
 
 test("monthly packages show monthly amounts and quantities before confirmation", async () => {
@@ -93,22 +96,18 @@ test("monthly packages show monthly amounts and quantities before confirmation",
     assert.ok(screen.getByText(quantity));
     await user.click(screen.getByRole("button", { name: "Voltar aos pacotes" }));
   }
-  assert.equal(demoBalance(readPackages(localStorage)), 0);
+  assert.equal(demoBalance(readPackages(localStorage)), 3);
 });
 
 async function submitFile(user: ReturnType<typeof userEvent.setup>, file = new File(["comprovativo"], "recibo.pdf", { type: "application/pdf" })) {
-  if (!readPackages(localStorage).grants.length) savePackageAction(localStorage, { type: "select", packageId: "free", id: "test-fixture" });
   await user.upload(screen.getByLabelText("Seleccionar comprovativo"), file);
   await user.click(mainAnalyse());
   await screen.findByRole("heading", { name: RESULT_LABELS.unverified }, { timeout: 4500 });
 }
 
 test("free quota decreases on completion, survives reload and redirects after the third result without losing it", async () => {
-  let user = mount("/pacotes");
-  await user.click(screen.getByRole("button", { name: "Experimentar grátis" }));
-  await waitFor(() => assert.equal((screen.getByRole("button", { name: "Analisar comprovativo" }) as HTMLButtonElement).disabled, false));
-  await user.click(screen.getByRole("button", { name: "Analisar comprovativo" }));
-  await screen.findByRole("heading", { name: "Analisar comprovativo", level: 1 });
+  let user = mount("/analisar");
+  assert.ok(screen.getByText("Plano Grátis"));
   assert.ok(screen.getByText("3 verificações restantes"));
   for (let n = 1; n <= 2; n++) {
     await submitFile(user);
@@ -126,6 +125,10 @@ test("free quota decreases on completion, survives reload and redirects after th
   assert.equal(demoBalance(readPackages(localStorage)), 0);
   assert.equal(saved().analyses.length, 3);
   assert.equal(saved().analyses[2].fileName, "terceiro.pdf");
+  cleanup();
+  user = mount("/pacotes", true);
+  assert.equal(demoBalance(readPackages(localStorage)), 0);
+  assert.equal((screen.getByRole("button", { name: "Grátis activado" }) as HTMLButtonElement).disabled, true);
   await user.click(screen.getByRole("link", { name: "Analisar comprovativo" }));
   await screen.findByRole("heading", { name: "Analisar comprovativo", level: 1 });
   await user.upload(screen.getByLabelText("Seleccionar comprovativo"), new File(["quarto"], "quarto.pdf"));

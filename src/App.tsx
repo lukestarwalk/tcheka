@@ -42,9 +42,16 @@ import {
 } from "./domain";
 import type { AnalysisRecord, ResultState, Store } from "./domain";
 import { loadStore, persistStore } from "./storage";
-import { PACKAGE_STORAGE_KEY, NoCreditsError, demoBalance, emptyPackages, readPackages, savePackageAction } from "./packages";
+import { PACKAGE_STORAGE_KEY, NoCreditsError, demoBalance, emptyPackages, initializePackages, readPackages, savePackageAction } from "./packages";
 
 const resultLink = (id: string) => `/resultado/${encodeURIComponent(id)}`;
+const HISTORY_FILTERS = [
+  ["all", "Todos"],
+  ["unverified", "Não analisados"],
+  ["clear", "Sem divergências"],
+  ["irregular", "Indícios de irregularidade"],
+  ["inconclusive", "Inconclusivos"],
+] as const;
 const PROCESSING_STEPS = ["Receber ficheiro", "Organizar registo", "Preparar resultado"];
 const PROCESSING_TITLES = ["A receber o comprovativo…", "A organizar o registo…", "A preparar o resultado…"];
 const routeTo = (path: string) => {
@@ -136,8 +143,9 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [store, setStore] = useState<Store>(startStore);
   const [wallet, setWallet] = useState(() => {
-    try { return readPackages(localStorage); } catch { return emptyPackages(); }
+    try { return initializePackages(localStorage); } catch { return emptyPackages(); }
   });
+  const [walletError, setWalletError] = useState(false);
   const [route, setRoute] = useState(() =>
     validRoute(window.location.hash.slice(1)),
   );
@@ -160,7 +168,8 @@ export default function App() {
   const closeReset = useCallback(() => setShowReset(false), []);
   useEffect(() => {
     const refresh = () => {
-      try { setWallet(readPackages(localStorage)); } catch { /* Show the last known balance. */ }
+      try { setWallet(initializePackages(localStorage)); setWalletError(false); }
+      catch { setWalletError(true); }
     };
     refresh();
     const sync = (event: StorageEvent) => {
@@ -402,8 +411,13 @@ export default function App() {
         <main id="main-content" className="page" tabIndex={-1}>
           {!isPackages && !isHistory && !isAbout && (
             <div className="analysis-balance" role="status">
-              <div><strong>{demoBalance(wallet)} {demoBalance(wallet) === 1 ? "verificação restante" : "verificações restantes"}</strong><span>Saldo de demonstração</span></div>
+              <div><strong>{demoBalance(wallet)} {demoBalance(wallet) === 1 ? "verificação restante" : "verificações restantes"}</strong><span>{wallet.grants.length > 0 && wallet.grants.every((grant) => grant.packageId === "free") ? "Plano Grátis" : "Saldo de demonstração"}</span></div>
               <a className="inline-link" href="#/pacotes">Ver pacotes <ArrowRight size={15} /></a>
+            </div>
+          )}
+          {walletError && (
+            <div className="form-error" role="alert">
+              <Info size={18} />Não foi possível activar o plano grátis. Permita o armazenamento neste navegador e actualize a página.
             </div>
           )}
           {storageWarning && (
@@ -997,24 +1011,28 @@ export default function App() {
                 </button>
               )}
             </label>
+            <label className="history-mobile-filter">
+              <span>Resultado</span>
+              <select
+                aria-label="Filtrar por resultado"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value as ResultState | "all")}
+              >
+                {HISTORY_FILTERS.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
             <div className="filter-tabs" aria-label="Filtrar por resultado">
-              {(["all", "unverified", "clear", "irregular", "inconclusive"] as const).map(
-                (value) => (
+              {HISTORY_FILTERS.map(
+                ([value, label]) => (
                   <button
                     key={value}
                     className={`filter-tab ${filter === value ? "active" : ""}`}
                     onClick={() => setFilter(value)}
                     aria-pressed={filter === value}
                   >
-                    {value === "all"
-                      ? "Todos"
-                      : value === "unverified"
-                        ? "Não analisados"
-                      : value === "clear"
-                        ? "Sem divergências"
-                        : value === "irregular"
-                          ? "Indícios de irregularidade"
-                          : "Inconclusivos"}
+                    {label}
                   </button>
                 ),
               )}

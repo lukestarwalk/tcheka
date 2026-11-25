@@ -94,6 +94,18 @@ export function readPackages(storage: Pick<Storage, "getItem">): PackageState {
   try { return sanitizePackages(JSON.parse(saved)); } catch { return emptyPackages(); }
 }
 
+/** Grant the first-visit allowance once, without opening or replacing a checkout. */
+export function initializePackages(storage: Pick<Storage, "getItem" | "setItem">): PackageState {
+  const state = readPackages(storage);
+  if (freeActivated(state)) return state;
+  const next: PackageState = {
+    ...state,
+    grants: [...state.grants, { id: "free-trial", packageId: "free" }],
+  };
+  storage.setItem(PACKAGE_STORAGE_KEY, JSON.stringify(next));
+  return next;
+}
+
 /** Read the latest state and persist before reporting success. Storage failures are surfaced to the UI. */
 export function savePackageAction(storage: Pick<Storage, "getItem" | "setItem">, action: PackageAction): PackageState {
   const next = updatePackages(readPackages(storage), action);

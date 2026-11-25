@@ -80,8 +80,8 @@ export default function PackagesPage() {
                 <div className="package-price"><strong>{formatMoney(item.amount)}</strong><span>{item.period}</span></div>
                 <p className="package-allowance">{item.allowance}</p>
                 <p className="package-terms">{item.terms}</p>
-                <button className={item.id === "single" ? "primary" : "secondary"} onClick={() => select(item.id)} disabled={item.id === "free" && freeActivated(state)}>{item.button}<ArrowRight size={16} /></button>
-                {item.id === "free" && freeActivated(state) && <small className="package-used">Teste grátis já activado neste navegador.</small>}
+                <button className={item.id === "single" ? "primary" : "secondary"} onClick={() => select(item.id)} disabled={item.id === "free" && freeActivated(state)}>{item.id === "free" && freeActivated(state) ? "Grátis activado" : item.button}<ArrowRight size={16} /></button>
+                {item.id === "free" && freeActivated(state) && <small className="package-used">Activado automaticamente na primeira visita.</small>}
               </article>
             ))}
           </div>

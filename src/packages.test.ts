@@ -1,11 +1,39 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PACKAGE_STORAGE_KEY, NoCreditsError, demoBalance, emptyPackages, readPackages, sanitizePackages, savePackageAction, updatePackages } from "./packages";
+import { PACKAGE_STORAGE_KEY, NoCreditsError, demoBalance, emptyPackages, initializePackages, readPackages, sanitizePackages, savePackageAction, updatePackages } from "./packages";
 
 function memoryStorage() {
   const values = new Map<string, string>();
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 }
+
+test("automatic free allowance persists once and never refills consumed credits", () => {
+  const storage = memoryStorage();
+  assert.equal(demoBalance(initializePackages(storage)), 3);
+  assert.equal(readPackages(storage).checkout, null);
+  assert.equal(initializePackages(storage).grants.length, 1);
+  for (let n = 1; n <= 3; n++) {
+    savePackageAction(storage, { type: "consume", id: `usage-${n}` });
+    assert.equal(demoBalance(initializePackages(storage)), 3 - n);
+  }
+  assert.equal(initializePackages(storage).grants.length, 1);
+});
+
+test("automatic allowance preserves an existing checkout and paid credits", () => {
+  const storage = memoryStorage();
+  savePackageAction(storage, { type: "select", packageId: "single", id: "checkout-existing" });
+  savePackageAction(storage, { type: "payment" });
+  const checkout = readPackages(storage).checkout;
+  assert.deepEqual(initializePackages(storage).checkout, checkout);
+  savePackageAction(storage, { type: "confirm" });
+  assert.equal(demoBalance(initializePackages(storage)), 13);
+});
+
+test("automatic activation requires the allowance to be saved successfully", () => {
+  const storage = memoryStorage();
+  assert.throws(() => initializePackages({ ...storage, setItem: () => { throw new Error("Blocked"); } }), /Blocked/);
+  assert.equal(demoBalance(readPackages(storage)), 0);
+});
 
 test("a paid choice grants credits once, only after the payment step, across reloads and repeated clicks", () => {
   const storage = memoryStorage();
